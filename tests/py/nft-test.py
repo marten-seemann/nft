@@ -1164,6 +1164,10 @@ def set_process(set_line, filename, lineno):
         set_data = tokens[i+1]
         i += 2
 
+    while len(tokens) > i and tokens[i] == ".":
+        set_data += " . " + tokens[i+1]
+        i += 2
+
     if parse_typeof and tokens[i] == "mark":
         set_data += " " + tokens[i]
         i += 1;
