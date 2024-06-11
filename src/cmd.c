@@ -455,6 +455,9 @@ bool nft_cmd_collapse(struct list_head *cmds)
 			continue;
 		}
 
+		if (cmd->expr->etype == EXPR_VARIABLE)
+			continue;
+
 		if (!elems) {
 			elems = cmd;
 			continue;
