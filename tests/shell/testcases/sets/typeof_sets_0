@@ -4,6 +4,8 @@
 # s1 and s2 are identical, they just use different
 # ways for declaration.
 
+# NFT_TEST_REQUIRES(NFT_TEST_HAVE_ip_options)
+
 set -e
 
 die() {
