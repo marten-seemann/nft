@@ -1,6 +1,7 @@
 #!/bin/bash
 
 # NFT_TEST_REQUIRES(NFT_TEST_HAVE_cttimeout)
+# NFT_TEST_REQUIRES(NFT_TEST_HAVE_ctexpect)
 
 $NFT -f /dev/stdin <<EOF || exit 1
 table inet t {
