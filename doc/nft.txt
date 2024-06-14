@@ -43,6 +43,8 @@ understanding of their meaning. You can get information about options by running
 *-f*::
 *--file 'filename'*::
 	Read input from 'filename'. If 'filename' is -, read from stdin.
+	The directory path to this file is inserted at the beginning the list of
+	directories to be searched for included files (see *-I/--includepath*).
 
 *-D*::
 *--define 'name=value'*::

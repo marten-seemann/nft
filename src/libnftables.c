@@ -17,6 +17,7 @@
 #include <cmd.h>
 #include <errno.h>
 #include <sys/stat.h>
+#include <libgen.h>
 
 static int nft_netlink(struct nft_ctx *nft,
 		       struct list_head *cmds, struct list_head *msgs)
@@ -786,6 +787,19 @@ static int nft_run_optimized_file(struct nft_ctx *nft, const char *filename)
 	return __nft_run_cmd_from_filename(nft, filename);
 }
 
+static int nft_ctx_add_basedir_include_path(struct nft_ctx *nft,
+					    const char *filename)
+{
+	const char *basedir = dirname(xstrdup(filename));
+	int ret;
+
+	ret = nft_ctx_add_include_path(nft, basedir);
+
+	free_const(basedir);
+
+	return ret;
+}
+
 EXPORT_SYMBOL(nft_run_cmd_from_filename);
 int nft_run_cmd_from_filename(struct nft_ctx *nft, const char *filename)
 {
@@ -797,6 +811,10 @@ int nft_run_cmd_from_filename(struct nft_ctx *nft, const char *filename)
 	if (!strcmp(filename, "/dev/stdin") &&
 	    !nft_output_json(&nft->output))
 		nft->stdin_buf = stdin_to_buffer();
+
+	if (!nft->stdin_buf &&
+	    nft_ctx_add_basedir_include_path(nft, filename) < 0)
+		return -1;
 
 	if (nft->optimize_flags) {
 		ret = nft_run_optimized_file(nft, filename);
