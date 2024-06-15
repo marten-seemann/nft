@@ -1175,39 +1175,58 @@ static bool search_in_include_path(const char *filename)
 		filename[0] != '/');
 }
 
+static int include_path_glob(struct nft_ctx *nft, void *scanner,
+			     const char *include_path, const char *filename,
+			     const struct location *loc)
+{
+	struct parser_state *state = yyget_extra(scanner);
+	struct error_record *erec;
+	char buf[PATH_MAX];
+	int ret;
+
+	ret = snprintf(buf, sizeof(buf), "%s/%s", include_path, filename);
+	if (ret < 0 || ret >= PATH_MAX) {
+		erec = error(loc, "Too long file path \"%s/%s\"\n",
+			     include_path, filename);
+		erec_queue(erec, state->msgs);
+		return -1;
+	}
+
+	ret = include_glob(nft, scanner, buf, loc);
+
+	/* error was already handled */
+	if (ret == -1)
+		return -1;
+	/* no wildcards and file was processed: break early. */
+	if (ret == 0)
+		return 0;
+
+	/* else 1 (no wildcards) or 2 (wildcards): keep
+	 * searching.
+	 */
+	return ret;
+}
+
 int scanner_include_file(struct nft_ctx *nft, void *scanner,
 			 const char *filename, const struct location *loc)
 {
 	struct parser_state *state = yyget_extra(scanner);
 	struct error_record *erec;
-	char buf[PATH_MAX];
 	unsigned int i;
 	int ret = -1;
 
 	if (search_in_include_path(filename)) {
 		for (i = 0; i < nft->num_include_paths; i++) {
-			ret = snprintf(buf, sizeof(buf), "%s/%s",
-				       nft->include_paths[i], filename);
-			if (ret < 0 || ret >= PATH_MAX) {
-				erec = error(loc, "Too long file path \"%s/%s\"\n",
-					     nft->include_paths[i], filename);
-				erec_queue(erec, state->msgs);
-				return -1;
-			}
-
-			ret = include_glob(nft, scanner, buf, loc);
-
-			/* error was already handled */
-			if (ret == -1)
-				return -1;
-			/* no wildcards and file was processed: break early. */
-			if (ret == 0)
-				return 0;
-
-			/* else 1 (no wildcards) or 2 (wildcards): keep
-			 * searching.
-			 */
+			ret = include_path_glob(nft, scanner,
+						nft->include_paths[i],
+						filename, loc);
+			if (ret <= 0)
+				return ret;
 		}
+		ret = include_path_glob(nft, scanner, DEFAULT_INCLUDE_PATH,
+					filename, loc);
+		if (ret <= 0)
+			return ret;
 	} else {
 		/* an absolute path (starts with '/') */
 		ret = include_glob(nft, scanner, filename, loc);

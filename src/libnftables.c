@@ -202,7 +202,6 @@ struct nft_ctx *nft_ctx_new(uint32_t flags)
 	nft_init(ctx);
 
 	ctx->state = xzalloc(sizeof(struct parser_state));
-	nft_ctx_add_include_path(ctx, DEFAULT_INCLUDE_PATH);
 	ctx->parser_max_errors	= 10;
 	cache_init(&ctx->cache.table_cache);
 	ctx->top_scope = scope_alloc();
