@@ -4440,49 +4440,12 @@ static int stmt_evaluate_queue(struct eval_ctx *ctx, struct stmt *stmt)
 
 static int stmt_evaluate_log_prefix(struct eval_ctx *ctx, struct stmt *stmt)
 {
-	char tmp[NF_LOG_PREFIXLEN] = {};
-	char prefix[NF_LOG_PREFIXLEN];
-	size_t len = sizeof(prefix);
-	size_t offset = 0;
-	struct expr *expr;
+	unsigned int len = strlen(stmt->log.prefix);
 
-	if (stmt->log.prefix->etype != EXPR_LIST) {
-		if (stmt->log.prefix &&
-		    div_round_up(stmt->log.prefix->len, BITS_PER_BYTE) >= NF_LOG_PREFIXLEN)
-			return expr_error(ctx->msgs, stmt->log.prefix, "log prefix is too long");
-
-		return 0;
-	}
-
-	prefix[0] = '\0';
-
-	list_for_each_entry(expr, &stmt->log.prefix->expressions, list) {
-		int ret;
-
-		switch (expr->etype) {
-		case EXPR_VALUE:
-			expr_to_string(expr, tmp);
-			ret = snprintf(prefix + offset, len, "%s", tmp);
-			break;
-		case EXPR_VARIABLE:
-			ret = snprintf(prefix + offset, len, "%s",
-				       expr->sym->expr->identifier);
-			break;
-		default:
-			BUG("unknown expression type %s\n", expr_name(expr));
-			break;
-		}
-		SNPRINTF_BUFFER_SIZE(ret, &len, &offset);
-	}
-
-	if (len == 0)
+	if (len >= NF_LOG_PREFIXLEN)
 		return stmt_error(ctx, stmt, "log prefix is too long");
-
-	expr = constant_expr_alloc(&stmt->log.prefix->location, &string_type,
-				   BYTEORDER_HOST_ENDIAN,
-				   strlen(prefix) * BITS_PER_BYTE, prefix);
-	expr_free(stmt->log.prefix);
-	stmt->log.prefix = expr;
+	else if (len == 0)
+		return stmt_error(ctx, stmt, "log prefix must have a minimum length of 1 character");
 
 	return 0;
 }

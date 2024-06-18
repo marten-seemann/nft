@@ -1343,12 +1343,9 @@ json_t *log_stmt_json(const struct stmt *stmt, struct output_ctx *octx)
 {
 	json_t *root = json_object(), *flags;
 
-	if (stmt->log.flags & STMT_LOG_PREFIX) {
-		char prefix[NF_LOG_PREFIXLEN] = {};
+	if (stmt->log.flags & STMT_LOG_PREFIX)
+		json_object_set_new(root, "prefix", json_string(stmt->log.prefix));
 
-		expr_to_string(stmt->log.prefix, prefix);
-		json_object_set_new(root, "prefix", json_string(prefix));
-	}
 	if (stmt->log.flags & STMT_LOG_GROUP)
 		json_object_set_new(root, "group",
 				    json_integer(stmt->log.group));

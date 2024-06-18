@@ -232,6 +232,7 @@ src_libnftables_la_SOURCES = \
 	src/osf.c \
 	src/owner.c \
 	src/payload.c \
+	src/preprocess.c \
 	src/print.c \
 	src/proto.c \
 	src/rt.c \
