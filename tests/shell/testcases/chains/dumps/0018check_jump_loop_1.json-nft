@@ -19,7 +19,11 @@
         "family": "ip",
         "table": "filter",
         "name": "ap1",
-        "handle": 0
+        "handle": 0,
+        "type": "filter",
+        "hook": "input",
+        "prio": 0,
+        "policy": "accept"
       }
     },
     {

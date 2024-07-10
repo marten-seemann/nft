@@ -19,7 +19,11 @@
         "family": "ip",
         "table": "t",
         "name": "c1",
-        "handle": 0
+        "handle": 0,
+        "type": "filter",
+        "hook": "prerouting",
+        "prio": 0,
+        "policy": "accept"
       }
     },
     {

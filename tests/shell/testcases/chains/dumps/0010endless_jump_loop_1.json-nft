@@ -19,7 +19,11 @@
         "family": "ip",
         "table": "t",
         "name": "c",
-        "handle": 0
+        "handle": 0,
+        "type": "filter",
+        "hook": "input",
+        "prio": 0,
+        "policy": "accept"
       }
     }
   ]
