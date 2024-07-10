@@ -789,12 +789,12 @@ static int nft_run_optimized_file(struct nft_ctx *nft, const char *filename)
 static int nft_ctx_add_basedir_include_path(struct nft_ctx *nft,
 					    const char *filename)
 {
-	const char *basedir = dirname(xstrdup(filename));
+	char *basedir = xstrdup(filename);
 	int ret;
 
-	ret = nft_ctx_add_include_path(nft, basedir);
+	ret = nft_ctx_add_include_path(nft, dirname(basedir));
 
-	free_const(basedir);
+	free(basedir);
 
 	return ret;
 }
