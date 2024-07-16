@@ -4251,7 +4251,7 @@ variable_expr		:	'$'	identifier
 					sym = symbol_lookup_fuzzy(scope, $2);
 					if (sym) {
 						erec_queue(error(&@2, "unknown identifier '%s'; "
-								      "did you mean identifier ‘%s’?",
+								      "did you mean identifier '%s’?",
 								      $2, sym->identifier),
 							   state->msgs);
 					} else {
