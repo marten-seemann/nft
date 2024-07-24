@@ -57,7 +57,6 @@ noinst_HEADERS = \
 	include/linux/netfilter_arp/arp_tables.h \
 	include/linux/netfilter_bridge.h \
 	include/linux/netfilter_bridge/ebtables.h \
-	include/linux/netfilter_decnet.h \
 	include/linux/netfilter_ipv4.h \
 	include/linux/netfilter_ipv4/ip_tables.h \
 	include/linux/netfilter_ipv6.h \
