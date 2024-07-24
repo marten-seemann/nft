@@ -1184,21 +1184,9 @@ static bool nft_cache_needs_refresh(struct nft_cache *cache, unsigned int flags)
 	       (flags & NFT_CACHE_REFRESH);
 }
 
-static bool nft_cache_is_updated(struct nft_cache *cache, unsigned int flags,
-				 uint16_t genid)
+static bool nft_cache_is_updated(struct nft_cache *cache, uint16_t genid)
 {
-	if (!genid)
-		return false;
-
-	if (genid == cache->genid)
-		return true;
-
-	if (genid == cache->genid + 1) {
-		cache->genid++;
-		return true;
-	}
-
-	return false;
+	return genid && genid == cache->genid;
 }
 
 bool nft_cache_needs_update(struct nft_cache *cache)
@@ -1223,7 +1211,7 @@ replay:
 	genid = mnl_genid_get(&ctx);
 	if (!nft_cache_needs_refresh(cache, flags) &&
 	    nft_cache_is_complete(cache, flags) &&
-	    nft_cache_is_updated(cache, flags, genid))
+	    nft_cache_is_updated(cache, genid))
 		return 0;
 
 	if (cache->genid)
