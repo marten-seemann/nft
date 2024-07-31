@@ -321,6 +321,7 @@ A2X_OPTS_MANPAGE = \
 ASCIIDOC_MAIN = doc/nft.txt
 
 ASCIIDOC_INCLUDES = \
+	doc/additional-commands.txt \
 	doc/data-types.txt \
 	doc/payload-expression.txt \
 	doc/primary-expression.txt \
