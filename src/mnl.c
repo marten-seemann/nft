@@ -2529,11 +2529,12 @@ static int mnl_nft_dump_nf_arp(struct netlink_ctx *ctx, int family,
 static int mnl_nft_dump_nf_netdev(struct netlink_ctx *ctx, int family,
 				  const char *devname, struct list_head *hook_list)
 {
-	int err;
+	int err1, err2;
 
-	err = __mnl_nft_dump_nf_hooks(ctx, family, NFPROTO_NETDEV, NF_NETDEV_INGRESS, devname, hook_list);
+	err1 = __mnl_nft_dump_nf_hooks(ctx, family, NFPROTO_NETDEV, NF_NETDEV_INGRESS, devname, hook_list);
+	err2 = __mnl_nft_dump_nf_hooks(ctx, family, NFPROTO_NETDEV, NF_NETDEV_EGRESS, devname, hook_list);
 
-	return err;
+	return err1 ? err2 : err1;
 }
 
 static void release_hook_list(struct list_head *hook_list)
