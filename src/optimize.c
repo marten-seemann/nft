@@ -63,6 +63,8 @@ static bool __expr_cmp(const struct expr *expr_a, const struct expr *expr_b)
 			return false;
 		if (expr_a->meta.base != expr_b->meta.base)
 			return false;
+		if (expr_a->meta.inner_desc != expr_b->meta.inner_desc)
+			return false;
 		break;
 	case EXPR_CT:
 		if (expr_a->ct.key != expr_b->ct.key)
