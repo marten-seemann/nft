@@ -73,7 +73,8 @@ static unsigned int evaluate_cache_del(struct cmd *cmd, unsigned int flags)
 {
 	switch (cmd->obj) {
 	case CMD_OBJ_ELEMENTS:
-		flags |= NFT_CACHE_SETELEM_MAYBE;
+		flags |= NFT_CACHE_SET |
+			 NFT_CACHE_SETELEM_MAYBE;
 		break;
 	default:
 		break;
@@ -426,8 +427,7 @@ int nft_cache_evaluate(struct nft_ctx *nft, struct list_head *cmds,
 			break;
 		case CMD_DELETE:
 		case CMD_DESTROY:
-			flags |= NFT_CACHE_TABLE |
-				 NFT_CACHE_SET;
+			flags |= NFT_CACHE_TABLE;
 
 			flags = evaluate_cache_del(cmd, flags);
 			break;
