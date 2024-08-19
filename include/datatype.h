@@ -120,15 +120,6 @@ enum byteorder {
 
 struct expr;
 
-/**
- * enum datatype_flags
- *
- * @DTYPE_F_ALLOC:		datatype is dynamically allocated
- */
-enum datatype_flags {
-	DTYPE_F_ALLOC		= (1 << 0),
-};
-
 struct parse_ctx;
 /**
  * struct datatype
@@ -145,11 +136,12 @@ struct parse_ctx;
  * @print:	function to print a constant of this type
  * @parse:	function to parse a symbol and return an expression
  * @sym_tbl:	symbol table for this type
- * @refcnt:	reference counter (only for DTYPE_F_ALLOC)
+ * @refcnt:	reference counter (only for dynamically allocated, see .alloc)
  */
 struct datatype {
 	uint32_t			type;
-	enum byteorder			byteorder;
+	enum byteorder			byteorder:8;
+	uint32_t			alloc:1;
 	unsigned int			flags;
 	unsigned int			size;
 	unsigned int			subtypes;

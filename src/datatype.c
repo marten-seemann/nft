@@ -1347,7 +1347,7 @@ static struct datatype *datatype_alloc(void)
 	struct datatype *dtype;
 
 	dtype = xzalloc(sizeof(*dtype));
-	dtype->flags = DTYPE_F_ALLOC;
+	dtype->alloc = 1;
 	dtype->refcnt = 1;
 
 	return dtype;
@@ -1359,7 +1359,7 @@ const struct datatype *datatype_get(const struct datatype *ptr)
 
 	if (!dtype)
 		return NULL;
-	if (!(dtype->flags & DTYPE_F_ALLOC))
+	if (!dtype->alloc)
 		return dtype;
 
 	dtype->refcnt++;
@@ -1389,7 +1389,7 @@ struct datatype *datatype_clone(const struct datatype *orig_dtype)
 	*dtype = *orig_dtype;
 	dtype->name = xstrdup(orig_dtype->name);
 	dtype->desc = xstrdup(orig_dtype->desc);
-	dtype->flags = DTYPE_F_ALLOC | orig_dtype->flags;
+	dtype->alloc = 1;
 	dtype->refcnt = 1;
 
 	return dtype;
@@ -1401,7 +1401,7 @@ void datatype_free(const struct datatype *ptr)
 
 	if (!dtype)
 		return;
-	if (!(dtype->flags & DTYPE_F_ALLOC))
+	if (!dtype->alloc)
 		return;
 
 	assert(dtype->refcnt != 0);
