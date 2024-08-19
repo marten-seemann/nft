@@ -181,8 +181,11 @@ static int json_unpack_stmt(struct json_ctx *ctx, json_t *root,
 	assert(value);
 
 	if (json_object_size(root) != 1) {
+		const char *dump = json_dumps(root, 0);
+
 		json_error(ctx, "Malformed object (too many properties): '%s'.",
-			   json_dumps(root, 0));
+			   dump);
+		free_const(dump);
 		return 1;
 	}
 
@@ -3378,8 +3381,10 @@ static struct cmd *json_parse_cmd_add_set(struct json_ctx *ctx, json_t *root,
 		} else if ((set->data = json_parse_dtype_expr(ctx, tmp))) {
 			set->flags |= NFT_SET_MAP;
 		} else {
-			json_error(ctx, "Invalid map type '%s'.",
-				   json_dumps(tmp, 0));
+			const char *dump = json_dumps(tmp, 0);
+
+			json_error(ctx, "Invalid map type '%s'.", dump);
+			free_const(dump);
 			set_free(set);
 			handle_free(&h);
 			return NULL;
