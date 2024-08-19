@@ -124,11 +124,9 @@ struct expr;
  * enum datatype_flags
  *
  * @DTYPE_F_ALLOC:		datatype is dynamically allocated
- * @DTYPE_F_PREFIX:		preferred representation for ranges is a prefix
  */
 enum datatype_flags {
 	DTYPE_F_ALLOC		= (1 << 0),
-	DTYPE_F_PREFIX		= (1 << 1),
 };
 
 struct parse_ctx;
@@ -179,6 +177,7 @@ extern void datatype_set(struct expr *expr, const struct datatype *dtype);
 extern void __datatype_set(struct expr *expr, const struct datatype *dtype);
 extern void datatype_free(const struct datatype *dtype);
 struct datatype *datatype_clone(const struct datatype *orig_dtype);
+bool datatype_prefix_notation(const struct datatype *dtype);
 
 struct parse_ctx {
 	struct symbol_tables	*tbl;

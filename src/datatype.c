@@ -123,6 +123,11 @@ void datatype_print(const struct expr *expr, struct output_ctx *octx)
 	    expr->dtype->name);
 }
 
+bool datatype_prefix_notation(const struct datatype *dtype)
+{
+	return dtype->type == TYPE_IPADDR || dtype->type == TYPE_IP6ADDR;
+}
+
 struct error_record *symbol_parse(struct parse_ctx *ctx, const struct expr *sym,
 				  struct expr **res)
 {
@@ -642,7 +647,6 @@ const struct datatype ipaddr_type = {
 	.basetype	= &integer_type,
 	.print		= ipaddr_type_print,
 	.parse		= ipaddr_type_parse,
-	.flags		= DTYPE_F_PREFIX,
 };
 
 static void ip6addr_type_print(const struct expr *expr, struct output_ctx *octx)
@@ -709,7 +713,6 @@ const struct datatype ip6addr_type = {
 	.basetype	= &integer_type,
 	.print		= ip6addr_type_print,
 	.parse		= ip6addr_type_parse,
-	.flags		= DTYPE_F_PREFIX,
 };
 
 static void inet_protocol_type_print(const struct expr *expr,
