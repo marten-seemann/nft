@@ -8,13 +8,13 @@ registered implicitly by kernel modules such as nf_conntrack. +
 [verse]
 ____
 *list hooks* ['family']
-*list hooks netdev device* 'DEVICE_NAME'
+*list hooks netdev* [ *device* 'DEVICE_NAME' ]
 ____
 
 *list hooks* is enough to display everything that is active
-on the system, however, it does currently omit hooks that are
-tied to a specific network device (netdev family). To obtain
-those, the network device needs to be queried by name.
+on the system.  Hooks in the netdev family are tied to a network
+device.  If no device name is given, nft will query all network
+devices in the current network namespace.
 Example Usage:
 
 .List all active netfilter hooks in either the ip or ip6 stack
