@@ -45,6 +45,7 @@ struct basehook {
 	const char *hookfn;
 	const char *table;
 	const char *chain;
+	const char *devname;
 	int family;
 	int chain_family;
 	uint32_t num;
@@ -2179,7 +2180,22 @@ static void basehook_free(struct basehook *b)
 	free_const(b->hookfn);
 	free_const(b->chain);
 	free_const(b->table);
+	free_const(b->devname);
 	free(b);
+}
+
+static bool basehook_eq(const struct basehook *prev, const struct basehook *hook)
+{
+	if (prev->num != hook->num)
+		return false;
+
+	if (prev->devname != NULL && hook->devname != NULL)
+		return strcmp(prev->devname, hook->devname) == 0;
+
+	if (prev->devname == NULL && prev->devname == NULL)
+		return true;
+
+	return false;
 }
 
 static void basehook_list_add_tail(struct basehook *b, struct list_head *head)
@@ -2310,6 +2326,7 @@ static int dump_nf_attr_bpf_cb(const struct nlattr *attr, void *data)
 
 struct dump_nf_hook_data {
 	struct list_head *hook_list;
+	const char *devname;
 	int family;
 };
 
@@ -2331,6 +2348,7 @@ static int dump_nf_hooks(const struct nlmsghdr *nlh, void *_data)
 
 	hook = basehook_alloc();
 	hook->prio = ntohl(mnl_attr_get_u32(tb[NFNLA_HOOK_PRIORITY]));
+	hook->devname = data->devname ? xstrdup(data->devname) : NULL;
 
 	if (tb[NFNLA_HOOK_FUNCTION_NAME])
 		hook->hookfn = xstrdup(mnl_attr_get_str(tb[NFNLA_HOOK_FUNCTION_NAME]));
@@ -2420,6 +2438,7 @@ static int __mnl_nft_dump_nf_hooks(struct netlink_ctx *ctx, uint8_t query_family
 	char buf[MNL_SOCKET_BUFFER_SIZE];
 	struct dump_nf_hook_data data = {
 		.hook_list	= hook_list,
+		.devname	= devname,
 		.family		= query_family,
 	};
 	struct nlmsghdr *nlh;
@@ -2459,7 +2478,7 @@ static void print_hooks(struct netlink_ctx *ctx, int family, struct list_head *h
 			continue;
 
 		if (prev) {
-			if (prev->num == hook->num) {
+			if (basehook_eq(prev, hook)) {
 				fprintf(fp, "\n");
 				same = true;
 			} else {
@@ -2472,8 +2491,12 @@ static void print_hooks(struct netlink_ctx *ctx, int family, struct list_head *h
 		prev = hook;
 
 		if (!same) {
-			fprintf(fp, "\thook %s {\n",
-				hooknum2str(family, hook->num));
+			if (hook->devname)
+				fprintf(fp, "\thook %s device %s {\n",
+					hooknum2str(family, hook->num), hook->devname);
+			else
+				fprintf(fp, "\thook %s {\n",
+					hooknum2str(family, hook->num));
 		}
 
 		prio = hook->prio;
