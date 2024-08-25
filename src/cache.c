@@ -694,7 +694,7 @@ int rule_cache_dump(struct netlink_ctx *ctx, const struct handle *h,
 		    bool dump, bool reset)
 {
 	struct nftnl_rule_list *rule_cache;
-	const char *table = NULL;
+	const char *table = h->table.name;
 	const char *chain = NULL;
 	uint64_t rule_handle = 0;
 
