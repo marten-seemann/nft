@@ -314,27 +314,49 @@ static unsigned int evaluate_cache_list(struct nft_ctx *nft, struct cmd *cmd,
 static unsigned int evaluate_cache_reset(struct cmd *cmd, unsigned int flags,
 					 struct nft_cache_filter *filter)
 {
+	assert(filter);
+
 	switch (cmd->obj) {
+	case CMD_OBJ_TABLE:
+	case CMD_OBJ_CHAIN:
 	case CMD_OBJ_RULES:
 	case CMD_OBJ_RULE:
-		if (filter) {
-			if (cmd->handle.table.name) {
-				filter->list.family = cmd->handle.family;
-				filter->list.table = cmd->handle.table.name;
-			}
-			if (cmd->handle.chain.name)
-				filter->list.chain = cmd->handle.chain.name;
+		if (cmd->handle.table.name) {
+			filter->list.family = cmd->handle.family;
+			filter->list.table = cmd->handle.table.name;
 		}
-		flags |= NFT_CACHE_SET | NFT_CACHE_FLOWTABLE |
-			 NFT_CACHE_OBJECT | NFT_CACHE_CHAIN;
+		if (cmd->handle.chain.name)
+			filter->list.chain = cmd->handle.chain.name;
+		if (cmd->handle.family)
+			filter->list.family = cmd->handle.family;
+		if (cmd->handle.handle.id)
+			filter->list.rule_handle = cmd->handle.handle.id;
+
+		filter->reset.rule = true;
+		flags |= NFT_CACHE_FULL;
 		break;
-	case CMD_OBJ_ELEMENTS:
+	case CMD_OBJ_COUNTER:
+	case CMD_OBJ_COUNTERS:
+		obj_filter_setup(cmd, &flags, filter, NFT_OBJECT_COUNTER);
+		filter->reset.obj = true;
+		break;
+	case CMD_OBJ_QUOTA:
+	case CMD_OBJ_QUOTAS:
+		obj_filter_setup(cmd, &flags, filter, NFT_OBJECT_QUOTA);
+		filter->reset.obj = true;
+		break;
 	case CMD_OBJ_SET:
 	case CMD_OBJ_MAP:
-		flags |= NFT_CACHE_SET;
+		if (cmd->handle.table.name && cmd->handle.set.name) {
+			filter->list.family = cmd->handle.family;
+			filter->list.table = cmd->handle.table.name;
+			filter->list.set = cmd->handle.set.name;
+		}
+		flags |= NFT_CACHE_SETELEM;
+		filter->reset.elem = true;
 		break;
 	default:
-		flags |= NFT_CACHE_TABLE;
+		flags |= NFT_CACHE_FULL;
 		break;
 	}
 	flags |= NFT_CACHE_REFRESH;
@@ -450,6 +472,7 @@ err_name_too_long:
 static void reset_filter(struct nft_cache_filter *filter)
 {
 	memset(&filter->list, 0, sizeof(filter->list));
+	memset(&filter->reset, 0, sizeof(filter->reset));
 }
 
 int nft_cache_evaluate(struct nft_ctx *nft, struct list_head *cmds,
@@ -689,23 +712,32 @@ static int list_rule_cb(struct nftnl_rule *nlr, void *data)
 	return 0;
 }
 
-int rule_cache_dump(struct netlink_ctx *ctx, const struct handle *h,
-		    const struct nft_cache_filter *filter,
-		    bool dump, bool reset)
+static int rule_cache_dump(struct netlink_ctx *ctx, const struct handle *h,
+			   const struct nft_cache_filter *filter)
 {
 	struct nftnl_rule_list *rule_cache;
 	const char *table = h->table.name;
 	const char *chain = NULL;
 	uint64_t rule_handle = 0;
+	int family = h->family;
+	bool dump = true;
 
 	if (filter) {
-		table = filter->list.table;
-		chain = filter->list.chain;
-		rule_handle = filter->list.rule_handle;
+		if (filter->list.table)
+			table = filter->list.table;
+		if (filter->list.chain)
+			chain = filter->list.chain;
+		if (filter->list.rule_handle) {
+			rule_handle = filter->list.rule_handle;
+			dump = false;
+		}
+		if (filter->list.family)
+			family = filter->list.family;
 	}
 
-	rule_cache = mnl_nft_rule_dump(ctx, h->family,
-				       table, chain, rule_handle, dump, reset);
+	rule_cache = mnl_nft_rule_dump(ctx, family,
+				       table, chain, rule_handle, dump,
+				       filter->reset.rule);
 	if (rule_cache == NULL) {
 		if (errno == EINTR)
 			return -1;
@@ -889,7 +921,8 @@ static struct nftnl_obj_list *obj_cache_dump(struct netlink_ctx *ctx,
 		if (filter->list.obj_type)
 			type = filter->list.obj_type;
 	}
-	obj_list = mnl_nft_obj_dump(ctx, family, table, obj, type, dump, false);
+	obj_list = mnl_nft_obj_dump(ctx, family, table, obj, type, dump,
+				    filter->reset.obj);
 	if (!obj_list) {
                 if (errno == EINTR)
 			return NULL;
@@ -1063,7 +1096,7 @@ static int rule_init_cache(struct netlink_ctx *ctx, struct table *table,
 	struct chain *chain;
 	int ret;
 
-	ret = rule_cache_dump(ctx, &table->handle, filter, true, false);
+	ret = rule_cache_dump(ctx, &table->handle, filter);
 
 	list_for_each_entry_safe(rule, nrule, &ctx->list, list) {
 		chain = chain_cache_find(table, rule->handle.chain.name);
@@ -1159,7 +1192,7 @@ static int cache_init_objects(struct netlink_ctx *ctx, unsigned int flags,
 					continue;
 
 				ret = netlink_list_setelems(ctx, &set->handle,
-							    set, false);
+							    set, filter->reset.elem);
 				if (ret < 0)
 					goto cache_fails;
 			}
@@ -1172,7 +1205,7 @@ static int cache_init_objects(struct netlink_ctx *ctx, unsigned int flags,
 					continue;
 
 				ret = netlink_list_setelems(ctx, &set->handle,
-							    set, false);
+							    set, filter->reset.elem);
 				if (ret < 0)
 					goto cache_fails;
 			}

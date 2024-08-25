@@ -74,13 +74,6 @@ $DIFF -u <(echo "$EXPECT") <($NFT list ruleset)
 
 echo "resetting specific chain"
 EXPECT='table ip t {
-	set s {
-		type ipv4_addr
-		size 65535
-		flags dynamic
-		counter
-	}
-
 	chain c2 {
 		counter packets 3 bytes 13 accept
 		counter packets 4 bytes 14 drop
@@ -95,6 +88,7 @@ EXPECT='table ip t {
 		size 65535
 		flags dynamic
 		counter
+		elements = { 1.1.1.1 counter packets 1 bytes 11 }
 	}
 
 	chain c {
@@ -116,6 +110,7 @@ EXPECT='table ip t {
 		size 65535
 		flags dynamic
 		counter
+		elements = { 1.1.1.1 counter packets 1 bytes 11 }
 	}
 
 	chain c {
@@ -143,6 +138,7 @@ EXPECT='table ip t {
 		size 65535
 		flags dynamic
 		counter
+		elements = { 1.1.1.1 counter packets 1 bytes 11 }
 	}
 
 	chain c {

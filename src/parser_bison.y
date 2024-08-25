@@ -1757,21 +1757,21 @@ reset_cmd		:	COUNTERS	ruleset_spec
 			}
 			|	RULES		table_spec
 			{
-				$$ = cmd_alloc(CMD_RESET, CMD_OBJ_RULES, &$2, &@$, NULL);
+				$$ = cmd_alloc(CMD_RESET, CMD_OBJ_TABLE, &$2, &@$, NULL);
 			}
 			|	RULES		TABLE	table_spec
 			{
 				/* alias of previous rule. */
-				$$ = cmd_alloc(CMD_RESET, CMD_OBJ_RULES, &$3, &@$, NULL);
+				$$ = cmd_alloc(CMD_RESET, CMD_OBJ_TABLE, &$3, &@$, NULL);
 			}
 			|	RULES		chain_spec
 			{
-				$$ = cmd_alloc(CMD_RESET, CMD_OBJ_RULES, &$2, &@$, NULL);
+				$$ = cmd_alloc(CMD_RESET, CMD_OBJ_CHAIN, &$2, &@$, NULL);
 			}
 			|	RULES		CHAIN	chain_spec
 			{
 				/* alias of previous rule. */
-				$$ = cmd_alloc(CMD_RESET, CMD_OBJ_RULES, &$3, &@$, NULL);
+				$$ = cmd_alloc(CMD_RESET, CMD_OBJ_CHAIN, &$3, &@$, NULL);
 			}
 			|	RULE		ruleid_spec
 			{

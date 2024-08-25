@@ -1163,8 +1163,11 @@ struct nftnl_table_list *mnl_nft_table_dump(struct netlink_ctx *ctx,
 		if (!nlt)
 			memory_allocation_error();
 
-		nftnl_table_set_u32(nlt, NFTNL_TABLE_FAMILY, family);
-		nftnl_table_set_str(nlt, NFTNL_TABLE_NAME, table);
+		if (family != NFPROTO_UNSPEC)
+			nftnl_table_set_u32(nlt, NFTNL_TABLE_FAMILY, family);
+		if (table)
+			nftnl_table_set_str(nlt, NFTNL_TABLE_NAME, table);
+
 		flags = NLM_F_ACK;
 	}
 

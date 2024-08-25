@@ -64,6 +64,12 @@ struct nft_cache_filter {
 	struct {
 		struct list_head head;
 	} obj[NFT_CACHE_HSIZE];
+
+	struct {
+		bool		obj;
+		bool		rule;
+		bool		elem;
+	} reset;
 };
 
 struct nft_cache;
@@ -148,9 +154,5 @@ struct netlink_ctx;
 
 void nft_chain_cache_update(struct netlink_ctx *ctx, struct table *table,
 			    const char *chain);
-
-int rule_cache_dump(struct netlink_ctx *ctx, const struct handle *h,
-		    const struct nft_cache_filter *filter,
-		    bool dump, bool reset);
 
 #endif /* _NFT_CACHE_H_ */

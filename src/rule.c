@@ -2462,58 +2462,12 @@ static int do_command_get(struct netlink_ctx *ctx, struct cmd *cmd)
 
 static int do_command_reset(struct netlink_ctx *ctx, struct cmd *cmd)
 {
-	struct obj *obj, *next;
-	struct table *table;
-	bool dump = false;
-	uint32_t type;
-	int ret;
-
 	switch (cmd->obj) {
-	case CMD_OBJ_COUNTERS:
-		dump = true;
-		/* fall through */
-	case CMD_OBJ_COUNTER:
-		type = NFT_OBJECT_COUNTER;
-		break;
-	case CMD_OBJ_QUOTAS:
-		dump = true;
-		/* fall through */
-	case CMD_OBJ_QUOTA:
-		type = NFT_OBJECT_QUOTA;
-		break;
-	case CMD_OBJ_RULES:
-		ret = netlink_reset_rules(ctx, cmd, true);
-		if (ret < 0)
-			return ret;
-
-		return do_command_list(ctx, cmd);
-	case CMD_OBJ_RULE:
-		return netlink_reset_rules(ctx, cmd, false);
 	case CMD_OBJ_ELEMENTS:
 		return do_get_setelems(ctx, cmd, true);
-	case CMD_OBJ_SET:
-	case CMD_OBJ_MAP:
-		ret = netlink_list_setelems(ctx, &cmd->handle, cmd->set, true);
-		if (ret < 0)
-			return ret;
-
-		return do_command_list(ctx, cmd);
 	default:
-		BUG("invalid command object type %u\n", cmd->obj);
+		break;
 	}
-
-	ret = netlink_reset_objs(ctx, cmd, type, dump);
-	list_for_each_entry_safe(obj, next, &ctx->list, list) {
-		table = table_cache_find(&ctx->nft->cache.table_cache,
-					 obj->handle.table.name,
-					 obj->handle.family);
-		if (!obj_cache_find(table, obj->handle.obj.name, obj->type)) {
-			list_del(&obj->list);
-			obj_cache_add(obj, table);
-		}
-	}
-	if (ret < 0)
-		return ret;
 
 	return do_command_list(ctx, cmd);
 }
