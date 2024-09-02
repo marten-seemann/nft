@@ -155,9 +155,14 @@ struct nftnl_set_elem *alloc_nftnl_setelem(const struct expr *set,
 		break;
 	}
 
-	if (elem->timeout)
-		nftnl_set_elem_set_u64(nlse, NFTNL_SET_ELEM_TIMEOUT,
-				       elem->timeout);
+	if (elem->timeout) {
+		uint64_t timeout = elem->timeout;
+
+		if (elem->timeout == NFT_NEVER_TIMEOUT)
+			timeout = 0;
+
+		nftnl_set_elem_set_u64(nlse, NFTNL_SET_ELEM_TIMEOUT, timeout);
+	}
 	if (elem->expiration)
 		nftnl_set_elem_set_u64(nlse, NFTNL_SET_ELEM_EXPIRATION,
 				       elem->expiration);
@@ -1417,8 +1422,12 @@ key_end:
 	expr = set_elem_expr_alloc(&netlink_location, key);
 	expr->flags |= EXPR_F_KERNEL;
 
-	if (nftnl_set_elem_is_set(nlse, NFTNL_SET_ELEM_TIMEOUT))
+	if (nftnl_set_elem_is_set(nlse, NFTNL_SET_ELEM_TIMEOUT)) {
 		expr->timeout	 = nftnl_set_elem_get_u64(nlse, NFTNL_SET_ELEM_TIMEOUT);
+		if (expr->timeout == 0)
+			expr->timeout	 = NFT_NEVER_TIMEOUT;
+	}
+
 	if (nftnl_set_elem_is_set(nlse, NFTNL_SET_ELEM_EXPIRATION))
 		expr->expiration = nftnl_set_elem_get_u64(nlse, NFTNL_SET_ELEM_EXPIRATION);
 	if (nftnl_set_elem_is_set(nlse, NFTNL_SET_ELEM_USERDATA))
