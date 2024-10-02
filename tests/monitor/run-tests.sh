@@ -120,6 +120,14 @@ echo_run_test() {
 	return $rc
 }
 
+netns=true
+for arg in "$@"; do
+	[[ "$arg" == "--no-netns" ]] && netns=false
+done
+if $netns; then
+	exec unshare -n $0 --no-netns "$@"
+fi
+
 testcases=""
 while [ -n "$1" ]; do
 	case "$1" in
@@ -129,6 +137,9 @@ while [ -n "$1" ]; do
 		;;
 	-j|--json)
 		test_json=true
+		shift
+		;;
+	--no-netns)
 		shift
 		;;
 	-H|--host)
