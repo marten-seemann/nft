@@ -1,20 +1,16 @@
 #!/bin/bash
 
-set -e
-
 tmpfile1=$(mktemp -p .)
-if [ ! -w $tmpfile1 ] ; then
-        echo "Failed to create tmp file" >&2
-        exit 0
-fi
-
-tmpfile2=$(mktemp -p .)
-if [ ! -w $tmpfile2 ] ; then
-        echo "Failed to create tmp file" >&2
-        exit 0
+if [ ! -w "$tmpfile1" ] ; then
+	# cwd might be readonly, mark as skip.
+	echo "Failed to create tmp file" >&2
+	exit 77
 fi
 
 trap "rm -rf $tmpfile1 $tmpfile2" EXIT # cleanup if aborted
+set -e
+
+tmpfile2=$(mktemp -p .)
 
 RULESET1="add table x"
 RULESET2="include \"$tmpfile1\""
