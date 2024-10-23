@@ -513,7 +513,6 @@ static int nft_evaluate(struct nft_ctx *nft, struct list_head *msgs,
 {
 	struct nft_cache_filter *filter;
 	struct cmd *cmd, *next;
-	bool collapsed = false;
 	unsigned int flags;
 	int err = 0;
 
@@ -528,9 +527,6 @@ static int nft_evaluate(struct nft_ctx *nft, struct list_head *msgs,
 	}
 
 	nft_cache_filter_fini(filter);
-
-	if (nft_cmd_collapse(cmds))
-		collapsed = true;
 
 	list_for_each_entry(cmd, cmds, list) {
 		if (cmd->op != CMD_ADD &&
@@ -552,9 +548,6 @@ static int nft_evaluate(struct nft_ctx *nft, struct list_head *msgs,
 			break;
 		}
 	}
-
-	if (collapsed)
-		nft_cmd_uncollapse(cmds);
 
 	if (err < 0 || nft->state->nerrs)
 		return -1;

@@ -1332,7 +1332,6 @@ struct cmd *cmd_alloc(enum cmd_ops op, enum cmd_obj obj,
 	cmd->attr     = xzalloc_array(NFT_NLATTR_LOC_MAX,
 				      sizeof(struct nlerr_loc));
 	cmd->attr_array_len = NFT_NLATTR_LOC_MAX;
-	init_list_head(&cmd->collapse_list);
 
 	return cmd;
 }

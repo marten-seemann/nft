@@ -35,6 +35,7 @@
 #include <libnftnl/udata.h>
 
 #include <rule.h>
+#include <cmd.h>
 #include <statement.h>
 #include <expression.h>
 #include <headers.h>
@@ -1219,6 +1220,12 @@ add_cmd			:	TABLE		table_spec
 			}
 			|	ELEMENT		set_spec	set_block_expr
 			{
+				if (nft_cmd_collapse_elems(CMD_ADD, state->cmds, &$2, $3)) {
+					handle_free(&$2);
+					expr_free($3);
+					$$ = NULL;
+					break;
+				}
 				$$ = cmd_alloc(CMD_ADD, CMD_OBJ_ELEMENTS, &$2, &@$, $3);
 			}
 			|	FLOWTABLE	flowtable_spec	flowtable_block_alloc
@@ -1336,6 +1343,12 @@ create_cmd		:	TABLE		table_spec
 			}
 			|	ELEMENT		set_spec	set_block_expr
 			{
+				if (nft_cmd_collapse_elems(CMD_CREATE, state->cmds, &$2, $3)) {
+					handle_free(&$2);
+					expr_free($3);
+					$$ = NULL;
+					break;
+				}
 				$$ = cmd_alloc(CMD_CREATE, CMD_OBJ_ELEMENTS, &$2, &@$, $3);
 			}
 			|	FLOWTABLE	flowtable_spec	flowtable_block_alloc

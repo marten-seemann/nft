@@ -718,7 +718,6 @@ struct cmd {
 	enum cmd_obj		obj;
 	struct handle		handle;
 	uint32_t		seqnum;
-	struct list_head	collapse_list;
 	union {
 		void		*data;
 		struct expr	*expr;
