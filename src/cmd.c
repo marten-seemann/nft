@@ -323,8 +323,6 @@ void nft_cmd_error(struct netlink_ctx *ctx, struct cmd *cmd,
 	uint32_t i;
 
 	for (i = 0; i < cmd->num_attrs; i++) {
-		if (!cmd->attr[i].offset)
-			break;
 		if (cmd->attr[i].offset == err->offset)
 			loc = cmd->attr[i].location;
 	}

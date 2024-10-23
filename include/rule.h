@@ -695,7 +695,7 @@ void monitor_free(struct monitor *m);
 #define NFT_NLATTR_LOC_MAX 32
 
 struct nlerr_loc {
-	uint16_t		offset;
+	uint32_t		offset;
 	const struct location	*location;
 };
 
