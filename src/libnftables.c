@@ -39,7 +39,7 @@ static int nft_netlink(struct nft_ctx *nft,
 
 	batch_seqnum = mnl_batch_begin(ctx.batch, mnl_seqnum_inc(&seqnum));
 	list_for_each_entry(cmd, cmds, list) {
-		ctx.seqnum = cmd->seqnum = mnl_seqnum_inc(&seqnum);
+		ctx.seqnum = cmd->seqnum_from = mnl_seqnum_inc(&seqnum);
 		ret = do_command(&ctx, cmd);
 		if (ret < 0) {
 			netlink_io_error(&ctx, &cmd->location,
@@ -47,6 +47,8 @@ static int nft_netlink(struct nft_ctx *nft,
 					 strerror(errno));
 			goto out;
 		}
+		seqnum = cmd->seqnum_to = ctx.seqnum;
+		mnl_seqnum_inc(&seqnum);
 		num_cmds++;
 	}
 	if (!nft->check)
@@ -80,12 +82,14 @@ static int nft_netlink(struct nft_ctx *nft,
 			cmd = list_first_entry(cmds, struct cmd, list);
 
 		list_for_each_entry_from(cmd, cmds, list) {
-			last_seqnum = cmd->seqnum;
-			if (err->seqnum == cmd->seqnum ||
+			last_seqnum = cmd->seqnum_to;
+			if ((err->seqnum >= cmd->seqnum_from &&
+			     err->seqnum <= cmd->seqnum_to) ||
 			    err->seqnum == batch_seqnum) {
 				nft_cmd_error(&ctx, cmd, err);
 				errno = err->err;
-				if (err->seqnum == cmd->seqnum) {
+				if (err->seqnum >= cmd->seqnum_from ||
+				    err->seqnum <= cmd->seqnum_to) {
 					mnl_err_list_free(err);
 					break;
 				}

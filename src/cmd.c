@@ -24,6 +24,7 @@ void cmd_add_loc(struct cmd *cmd, const struct nlmsghdr *nlh, const struct locat
 		cmd->attr = xrealloc(cmd->attr, sizeof(struct nlerr_loc) * cmd->attr_array_len);
 	}
 
+	cmd->attr[cmd->num_attrs].seqnum = nlh->nlmsg_seq;
 	cmd->attr[cmd->num_attrs].offset = nlh->nlmsg_len;
 	cmd->attr[cmd->num_attrs].location = loc;
 	cmd->num_attrs++;
@@ -323,7 +324,8 @@ void nft_cmd_error(struct netlink_ctx *ctx, struct cmd *cmd,
 	uint32_t i;
 
 	for (i = 0; i < cmd->num_attrs; i++) {
-		if (cmd->attr[i].offset == err->offset)
+		if (cmd->attr[i].seqnum == err->seqnum &&
+		    cmd->attr[i].offset == err->offset)
 			loc = cmd->attr[i].location;
 	}
 

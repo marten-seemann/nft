@@ -4269,13 +4269,13 @@ static json_t *seqnum_to_json(const uint32_t seqnum)
 		cur = json_cmd_assoc_list;
 		json_cmd_assoc_list = cur->next;
 
-		key = cur->cmd->seqnum % CMD_ASSOC_HSIZE;
+		key = cur->cmd->seqnum_from % CMD_ASSOC_HSIZE;
 		hlist_add_head(&cur->hnode, &json_cmd_assoc_hash[key]);
 	}
 
 	key = seqnum % CMD_ASSOC_HSIZE;
 	hlist_for_each_entry(cur, n, &json_cmd_assoc_hash[key], hnode) {
-		if (cur->cmd->seqnum == seqnum)
+		if (cur->cmd->seqnum_from == seqnum)
 			return cur->json;
 	}
 

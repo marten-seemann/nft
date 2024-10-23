@@ -695,6 +695,7 @@ void monitor_free(struct monitor *m);
 #define NFT_NLATTR_LOC_MAX 32
 
 struct nlerr_loc {
+	uint32_t		seqnum;
 	uint32_t		offset;
 	const struct location	*location;
 };
@@ -717,7 +718,8 @@ struct cmd {
 	enum cmd_ops		op;
 	enum cmd_obj		obj;
 	struct handle		handle;
-	uint32_t		seqnum;
+	uint32_t		seqnum_from;
+	uint32_t		seqnum_to;
 	union {
 		void		*data;
 		struct expr	*expr;
