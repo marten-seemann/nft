@@ -8,7 +8,7 @@
 
 struct mnl_socket *nft_mnl_socket_open(void);
 
-uint32_t mnl_seqnum_alloc(uint32_t *seqnum);
+uint32_t mnl_seqnum_inc(uint32_t *seqnum);
 uint32_t mnl_genid_get(struct netlink_ctx *ctx);
 
 struct mnl_err {
