@@ -1,7 +1,7 @@
 #ifndef _NFT_CMD_H_
 #define _NFT_CMD_H_
 
-void cmd_add_loc(struct cmd *cmd, uint16_t offset, const struct location *loc);
+void cmd_add_loc(struct cmd *cmd, const struct nlmsghdr *nlh, const struct location *loc);
 struct mnl_err;
 void nft_cmd_error(struct netlink_ctx *ctx, struct cmd *cmd,
 		   struct mnl_err *err);

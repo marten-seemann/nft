@@ -17,14 +17,14 @@
 #include <errno.h>
 #include <cache.h>
 
-void cmd_add_loc(struct cmd *cmd, uint16_t offset, const struct location *loc)
+void cmd_add_loc(struct cmd *cmd, const struct nlmsghdr *nlh, const struct location *loc)
 {
 	if (cmd->num_attrs >= cmd->attr_array_len) {
 		cmd->attr_array_len *= 2;
 		cmd->attr = xrealloc(cmd->attr, sizeof(struct nlerr_loc) * cmd->attr_array_len);
 	}
 
-	cmd->attr[cmd->num_attrs].offset = offset;
+	cmd->attr[cmd->num_attrs].offset = nlh->nlmsg_len;
 	cmd->attr[cmd->num_attrs].location = loc;
 	cmd->num_attrs++;
 }
