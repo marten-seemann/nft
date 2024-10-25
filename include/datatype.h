@@ -140,7 +140,8 @@ struct parse_ctx;
 struct datatype {
 	uint32_t			type;
 	enum byteorder			byteorder:8;
-	uint32_t			alloc:1;
+	uint32_t			alloc:1,
+					is_typeof:1;
 	unsigned int			size;
 	unsigned int			subtypes;
 	const char			*name;
@@ -271,6 +272,7 @@ extern const struct datatype boolean_type;
 extern const struct datatype priority_type;
 extern const struct datatype policy_type;
 extern const struct datatype cgroupv2_type;
+extern const struct datatype queue_type;
 
 /* private datatypes for reject statement. */
 extern const struct datatype reject_icmp_code_type;
