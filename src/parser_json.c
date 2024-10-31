@@ -18,6 +18,7 @@
 #include <netlink.h>
 #include <parser.h>
 #include <rule.h>
+#include <cmd.h>
 #include <sctp_chunk.h>
 #include <socket.h>
 
@@ -49,6 +50,7 @@
 #define CTX_F_SES	(1 << 6)	/* set_elem_expr_stmt */
 #define CTX_F_MAP	(1 << 7)	/* LHS of map_expr */
 #define CTX_F_CONCAT	(1 << 8)	/* inside concat_expr */
+#define CTX_F_COLLAPSED	(1 << 9)
 
 struct json_ctx {
 	struct nft_ctx *nft;
@@ -3490,6 +3492,15 @@ static struct cmd *json_parse_cmd_add_element(struct json_ctx *ctx,
 		handle_free(&h);
 		return NULL;
 	}
+
+	if ((op == CMD_CREATE || op == CMD_ADD) &&
+	    nft_cmd_collapse_elems(op, ctx->cmds, &h, expr)) {
+		handle_free(&h);
+		expr_free(expr);
+		ctx->flags |= CTX_F_COLLAPSED;
+		return NULL;
+	}
+
 	return cmd_alloc(op, cmd_obj, &h, int_loc, expr);
 }
 
@@ -4319,6 +4330,11 @@ static int __json_parse(struct json_ctx *ctx)
 		cmd = json_parse_cmd(ctx, value);
 
 		if (!cmd) {
+			if (ctx->flags & CTX_F_COLLAPSED) {
+				ctx->flags &= ~CTX_F_COLLAPSED;
+				continue;
+			}
+
 			json_error(ctx, "Parsing command array at index %zd failed.", index);
 			return -1;
 		}
