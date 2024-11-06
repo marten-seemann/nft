@@ -126,7 +126,6 @@ struct parse_ctx;
  *
  * @type:	numeric identifier
  * @byteorder:	byteorder of type (non-basetypes only)
- * @flags:	flags
  * @size:	type size (fixed sized non-basetypes only)
  * @subtypes:	number of subtypes (concat type)
  * @name:	type name
@@ -142,7 +141,6 @@ struct datatype {
 	uint32_t			type;
 	enum byteorder			byteorder:8;
 	uint32_t			alloc:1;
-	unsigned int			flags;
 	unsigned int			size;
 	unsigned int			subtypes;
 	const char			*name;
