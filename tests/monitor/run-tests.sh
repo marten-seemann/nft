@@ -1,7 +1,6 @@
 #!/bin/bash
 
-cd $(dirname $0)
-nft=${NFT:-../../src/nft}
+nft=${NFT:-$(dirname $0)/../../src/nft}
 debug=false
 test_json=false
 
@@ -146,7 +145,7 @@ while [ -n "$1" ]; do
 		nft=nft
 		shift
 		;;
-	testcases/*.t)
+	*.t)
 		testcases+=" $1"
 		shift
 		;;
