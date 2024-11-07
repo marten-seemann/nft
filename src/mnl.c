@@ -835,7 +835,15 @@ int mnl_nft_chain_add(struct netlink_ctx *ctx, struct cmd *cmd,
 			nftnl_udata_buf_free(udbuf);
 		}
 	}
+
+	nftnl_chain_set_str(nlc, NFTNL_CHAIN_TABLE, cmd->handle.table.name);
+	if (cmd->handle.chain.name)
+		nftnl_chain_set_str(nlc, NFTNL_CHAIN_NAME, cmd->handle.chain.name);
+
 	netlink_dump_chain(nlc, ctx);
+
+	nftnl_chain_unset(nlc, NFTNL_CHAIN_TABLE);
+	nftnl_chain_unset(nlc, NFTNL_CHAIN_NAME);
 
 	nlh = nftnl_nlmsg_build_hdr(nftnl_batch_buffer(ctx->batch),
 				    NFT_MSG_NEWCHAIN,
