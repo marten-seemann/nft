@@ -2204,7 +2204,7 @@ static bool basehook_eq(const struct basehook *prev, const struct basehook *hook
 	if (prev->devname != NULL && hook->devname != NULL)
 		return strcmp(prev->devname, hook->devname) == 0;
 
-	if (prev->devname == NULL && prev->devname == NULL)
+	if (prev->devname == NULL && hook->devname == NULL)
 		return true;
 
 	return false;
