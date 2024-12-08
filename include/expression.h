@@ -215,6 +215,7 @@ enum expr_flags {
 	EXPR_F_INTERVAL		= 0x20,
 	EXPR_F_KERNEL		= 0x40,
 	EXPR_F_REMOVE		= 0x80,
+	EXPR_F_INTERVAL_OPEN	= 0x100,
 };
 
 #include <payload.h>
@@ -301,7 +302,6 @@ struct expr {
 			uint64_t		expiration;
 			const char		*comment;
 			struct list_head	stmt_list;
-			uint32_t		elem_flags;
 		};
 		struct {
 			/* EXPR_UNARY */

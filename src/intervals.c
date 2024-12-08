@@ -738,7 +738,7 @@ int set_to_intervals(const struct set *set, struct expr *init, bool add)
 			}
 			newelem->flags |= EXPR_F_INTERVAL_END;
 		} else {
-			flags = NFTNL_SET_ELEM_F_INTERVAL_OPEN;
+			flags = EXPR_F_INTERVAL_OPEN;
 		}
 
 		expr = constant_expr_alloc(&elem->key->location, set->key->dtype,
@@ -750,7 +750,7 @@ int set_to_intervals(const struct set *set, struct expr *init, bool add)
 
 		expr_free(elem->key);
 		elem->key = expr;
-		i->elem_flags |= flags;
+		i->flags |= flags;
 		init->size++;
 		list_move_tail(&i->list, &intervals);
 

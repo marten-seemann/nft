@@ -180,7 +180,7 @@ struct nftnl_set_elem *alloc_nftnl_setelem(const struct expr *set,
 						netlink_gen_stmt_stateful(stmt));
 		}
 	}
-	if (elem->comment || expr->elem_flags) {
+	if (elem->comment || expr->flags & EXPR_F_INTERVAL_OPEN) {
 		udbuf = nftnl_udata_buf_alloc(NFT_USERDATA_MAXLEN);
 		if (!udbuf)
 			memory_allocation_error();
@@ -190,9 +190,9 @@ struct nftnl_set_elem *alloc_nftnl_setelem(const struct expr *set,
 					  elem->comment))
 			memory_allocation_error();
 	}
-	if (expr->elem_flags) {
+	if (expr->flags & EXPR_F_INTERVAL_OPEN) {
 		if (!nftnl_udata_put_u32(udbuf, NFTNL_UDATA_SET_ELEM_FLAGS,
-					 expr->elem_flags))
+					 NFTNL_SET_ELEM_F_INTERVAL_OPEN))
 			memory_allocation_error();
 	}
 	if (udbuf) {
@@ -1372,9 +1372,14 @@ static void set_elem_parse_udata(struct nftnl_set_elem *nlse,
 	if (ud[NFTNL_UDATA_SET_ELEM_COMMENT])
 		expr->comment =
 			xstrdup(nftnl_udata_get(ud[NFTNL_UDATA_SET_ELEM_COMMENT]));
-	if (ud[NFTNL_UDATA_SET_ELEM_FLAGS])
-		expr->elem_flags =
+	if (ud[NFTNL_UDATA_SET_ELEM_FLAGS]) {
+		uint32_t elem_flags;
+
+		elem_flags =
 			nftnl_udata_get_u32(ud[NFTNL_UDATA_SET_ELEM_FLAGS]);
+		if (elem_flags & NFTNL_SET_ELEM_F_INTERVAL_OPEN)
+			expr->flags |= EXPR_F_INTERVAL_OPEN;
+	}
 }
 
 int netlink_delinearize_setelem(struct nftnl_set_elem *nlse,
