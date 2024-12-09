@@ -102,7 +102,6 @@ static void location_update(struct location *loc, struct location *rhs, int n)
 {
 	if (n) {
 		loc->indesc       = rhs[n].indesc;
-		loc->token_offset = rhs[1].token_offset;
 		loc->line_offset  = rhs[1].line_offset;
 		loc->first_line   = rhs[1].first_line;
 		loc->first_column = rhs[1].first_column;
@@ -110,7 +109,6 @@ static void location_update(struct location *loc, struct location *rhs, int n)
 		loc->last_column  = rhs[n].last_column;
 	} else {
 		loc->indesc       = rhs[0].indesc;
-		loc->token_offset = rhs[0].token_offset;
 		loc->line_offset  = rhs[0].line_offset;
 		loc->first_line   = loc->last_line   = rhs[0].last_line;
 		loc->first_column = loc->last_column = rhs[0].last_column;

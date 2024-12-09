@@ -90,7 +90,6 @@ static void update_offset(struct parser_state *state, struct location *loc,
 			  unsigned int len)
 {
 	state->indesc->token_offset	+= len;
-	loc->token_offset		= state->indesc->token_offset;
 	loc->line_offset		= state->indesc->line_offset;
 }
 
