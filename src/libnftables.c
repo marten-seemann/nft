@@ -167,8 +167,19 @@ void nft_ctx_clear_vars(struct nft_ctx *ctx)
 	ctx->vars = NULL;
 }
 
-EXPORT_SYMBOL(nft_ctx_add_include_path);
-int nft_ctx_add_include_path(struct nft_ctx *ctx, const char *path)
+static bool nft_ctx_find_include_path(struct nft_ctx *ctx, const char *path)
+{
+	unsigned int i;
+
+	for (i = 0; i < ctx->num_include_paths; i++) {
+		if (!strcmp(ctx->include_paths[i], path))
+			return true;
+	}
+
+	return false;
+}
+
+static int __nft_ctx_add_include_path(struct nft_ctx *ctx, const char *path)
 {
 	char **tmp;
 	int pcount = ctx->num_include_paths;
@@ -182,6 +193,20 @@ int nft_ctx_add_include_path(struct nft_ctx *ctx, const char *path)
 
 	ctx->num_include_paths++;
 	return 0;
+}
+
+EXPORT_SYMBOL(nft_ctx_add_include_path);
+int nft_ctx_add_include_path(struct nft_ctx *ctx, const char *path)
+{
+	char canonical_path[PATH_MAX];
+
+	if (!realpath(path, canonical_path))
+		return -1;
+
+	if (nft_ctx_find_include_path(ctx, canonical_path))
+		return 0;
+
+	return __nft_ctx_add_include_path(ctx, canonical_path);
 }
 
 EXPORT_SYMBOL(nft_ctx_clear_include_paths);

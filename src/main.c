@@ -423,9 +423,8 @@ int main(int argc, char * const *argv)
 		case OPT_INCLUDEPATH:
 			if (nft_ctx_add_include_path(nft, optarg)) {
 				fprintf(stderr,
-					"Failed to add include path '%s'\n",
+					"Warning: Cannot include path '%s'\n",
 					optarg);
-				goto out_fail;
 			}
 			break;
 		case OPT_NUMERIC:
