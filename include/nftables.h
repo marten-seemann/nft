@@ -158,8 +158,7 @@ struct location {
 	const struct input_descriptor		*indesc;
 	union {
 		struct {
-			off_t			line_offset;
-
+			unsigned int 		line_offset;
 			unsigned int		first_line;
 			unsigned int		first_column;
 			unsigned int		last_column;

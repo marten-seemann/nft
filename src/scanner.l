@@ -88,8 +88,15 @@ static void update_pos(struct parser_state *state, struct location *loc,
 static void update_offset(struct parser_state *state, struct location *loc,
 			  unsigned int len)
 {
+	uint32_t line_offset;
+
 	state->indesc->token_offset	+= len;
-	loc->line_offset		= state->indesc->line_offset;
+	if (state->indesc->line_offset > UINT32_MAX)
+		line_offset = UINT32_MAX;
+	else
+		line_offset = state->indesc->line_offset;
+
+	loc->line_offset		= line_offset;
 }
 
 static void reset_pos(struct parser_state *state, struct location *loc)
