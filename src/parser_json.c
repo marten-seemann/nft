@@ -123,7 +123,6 @@ static void json_lib_error(struct json_ctx *ctx, json_error_t *err)
 		.indesc = &json_indesc,
 		.line_offset = err->position - err->column,
 		.first_line = err->line,
-		.last_line = err->line,
 		.first_column = err->column,
 		/* no information where problematic part ends :( */
 		.last_column = err->column,

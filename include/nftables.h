@@ -161,7 +161,6 @@ struct location {
 			off_t			line_offset;
 
 			unsigned int		first_line;
-			unsigned int		last_line;
 			unsigned int		first_column;
 			unsigned int		last_column;
 		};
