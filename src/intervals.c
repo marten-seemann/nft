@@ -156,6 +156,8 @@ static void set_prev_elem(struct expr **prev, struct expr *i,
 	mpz_set(prev_range->high, range->high);
 }
 
+static struct expr *interval_expr_key(struct expr *i);
+
 static void setelem_automerge(struct set_automerge_ctx *ctx)
 {
 	struct expr *i, *next, *prev = NULL;
@@ -175,7 +177,9 @@ static void setelem_automerge(struct set_automerge_ctx *ctx)
 		range_expr_value_low(range.low, i);
 		range_expr_value_high(range.high, i);
 
-		if (!prev) {
+		if (!prev ||
+		    interval_expr_key(prev)->timeout != interval_expr_key(i)->timeout ||
+		    interval_expr_key(prev)->expiration != interval_expr_key(i)->expiration) {
 			set_prev_elem(&prev, i, &prev_range, &range);
 			continue;
 		}
