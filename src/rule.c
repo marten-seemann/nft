@@ -1553,14 +1553,14 @@ static int do_command_insert(struct netlink_ctx *ctx, struct cmd *cmd)
 
 static int do_delete_setelems(struct netlink_ctx *ctx, struct cmd *cmd)
 {
+	const struct set *set = cmd->elem.set;
 	struct expr *expr = cmd->elem.expr;
-	struct set *set = cmd->elem.set;
 
 	if (set_is_non_concat_range(set) &&
 	    set_to_intervals(set, expr, false) < 0)
 		return -1;
 
-	if (mnl_nft_setelem_del(ctx, cmd, &cmd->handle, cmd->elem.expr) < 0)
+	if (mnl_nft_setelem_del(ctx, cmd, &cmd->handle, set, cmd->elem.expr) < 0)
 		return -1;
 
 	return 0;

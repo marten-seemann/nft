@@ -66,7 +66,8 @@ int mnl_nft_setelem_add(struct netlink_ctx *ctx, struct cmd *cmd,
 			const struct set *set, const struct expr *expr,
 			unsigned int flags);
 int mnl_nft_setelem_del(struct netlink_ctx *ctx, struct cmd *cmd,
-			const struct handle *h, const struct expr *init);
+			const struct handle *h, const struct set *set,
+			const struct expr *init);
 int mnl_nft_setelem_flush(struct netlink_ctx *ctx, const struct cmd *cmd);
 int mnl_nft_setelem_get(struct netlink_ctx *ctx, struct nftnl_set *nls,
 			bool reset);

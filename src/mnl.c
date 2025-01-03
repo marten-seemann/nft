@@ -30,6 +30,7 @@
 
 #include <mnl.h>
 #include <cmd.h>
+#include <intervals.h>
 #include <net/if.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
@@ -1725,17 +1726,46 @@ static void netlink_dump_setelem_done(struct netlink_ctx *ctx)
 	fprintf(fp, "\n");
 }
 
+static struct nftnl_set_elem *
+alloc_nftnl_setelem_interval(const struct set *set, const struct expr *init,
+			     struct expr *elem, struct expr *next_elem,
+			     struct nftnl_set_elem **nlse_high)
+{
+	struct nftnl_set_elem *nlse[2] = {};
+	LIST_HEAD(interval_list);
+	struct expr *expr, *next;
+	int i = 0;
+
+	if (setelem_to_interval(set, elem, next_elem, &interval_list) < 0)
+		memory_allocation_error();
+
+	if (list_empty(&interval_list)) {
+		*nlse_high = NULL;
+		nlse[i++] = alloc_nftnl_setelem(init, elem);
+		return nlse[0];
+	}
+
+	list_for_each_entry_safe(expr, next, &interval_list, list) {
+		nlse[i++] = alloc_nftnl_setelem(init, expr);
+		list_del(&expr->list);
+		expr_free(expr);
+	}
+	*nlse_high = nlse[1];
+
+	return nlse[0];
+}
+
 static int mnl_nft_setelem_batch(const struct nftnl_set *nls, struct cmd *cmd,
 				 struct nftnl_batch *batch,
 				 enum nf_tables_msg_types msg_type,
 				 unsigned int flags, uint32_t *seqnum,
-				 const struct expr *init,
+				 const struct set *set, const struct expr *init,
 				 struct netlink_ctx *ctx)
 {
+	struct nftnl_set_elem *nlse, *nlse_high = NULL;
+	struct expr *expr = NULL, *next;
 	struct nlattr *nest1, *nest2;
-	struct nftnl_set_elem *nlse;
 	struct nlmsghdr *nlh;
-	struct expr *expr = NULL;
 	int i = 0;
 
 	if (msg_type == NFT_MSG_NEWSETELEM)
@@ -1768,9 +1798,30 @@ next:
 	assert(expr);
 	nest1 = mnl_attr_nest_start(nlh, NFTA_SET_ELEM_LIST_ELEMENTS);
 	list_for_each_entry_from(expr, &init->expressions, list) {
-		nlse = alloc_nftnl_setelem(init, expr);
+
+		if (set_is_non_concat_range(set)) {
+			if (set_is_anonymous(set->flags) &&
+			    !list_is_last(&expr->list, &init->expressions))
+				next = list_next_entry(expr, list);
+			else
+				next = NULL;
+
+			if (!nlse_high) {
+				nlse = alloc_nftnl_setelem_interval(set, init, expr, next, &nlse_high);
+			} else {
+				nlse = nlse_high;
+				nlse_high = NULL;
+			}
+		} else {
+			nlse = alloc_nftnl_setelem(init, expr);
+		}
 
 		cmd_add_loc(cmd, nlh, &expr->location);
+
+		/* remain with this element, range high still needs to be added. */
+		if (nlse_high)
+			expr = list_prev_entry(expr, list);
+
 		nest2 = mnl_attr_nest_start(nlh, ++i);
 		nftnl_set_elem_nlmsg_build_payload(nlh, nlse);
 		mnl_attr_nest_end(nlh, nest2);
@@ -1778,6 +1829,10 @@ next:
 		netlink_dump_setelem(nlse, ctx);
 		nftnl_set_elem_free(nlse);
 		if (mnl_nft_attr_nest_overflow(nlh, nest1, nest2)) {
+			if (nlse_high) {
+				nftnl_set_elem_free(nlse_high);
+				nlse_high = NULL;
+			}
 			mnl_attr_nest_end(nlh, nest1);
 			mnl_nft_batch_continue(batch);
 			mnl_seqnum_inc(seqnum);
@@ -1815,7 +1870,7 @@ int mnl_nft_setelem_add(struct netlink_ctx *ctx, struct cmd *cmd,
 	netlink_dump_set(nls, ctx);
 
 	err = mnl_nft_setelem_batch(nls, cmd, ctx->batch, NFT_MSG_NEWSETELEM,
-				    flags, &ctx->seqnum, expr, ctx);
+				    flags, &ctx->seqnum, set, expr, ctx);
 	nftnl_set_free(nls);
 
 	return err;
@@ -1852,7 +1907,8 @@ int mnl_nft_setelem_flush(struct netlink_ctx *ctx, const struct cmd *cmd)
 }
 
 int mnl_nft_setelem_del(struct netlink_ctx *ctx, struct cmd *cmd,
-			const struct handle *h, const struct expr *init)
+			const struct handle *h, const struct set *set,
+			const struct expr *init)
 {
 	enum nf_tables_msg_types msg_type = NFT_MSG_DELSETELEM;
 	struct nftnl_set *nls;
@@ -1875,7 +1931,7 @@ int mnl_nft_setelem_del(struct netlink_ctx *ctx, struct cmd *cmd,
 		msg_type = NFT_MSG_DESTROYSETELEM;
 
 	err = mnl_nft_setelem_batch(nls, cmd, ctx->batch, msg_type, 0,
-				    &ctx->seqnum, init, ctx);
+				    &ctx->seqnum, set, init, ctx);
 	nftnl_set_free(nls);
 
 	return err;

@@ -683,30 +683,29 @@ static bool segtree_needs_first_segment(const struct set *set,
 
 int set_to_intervals(const struct set *set, struct expr *init, bool add)
 {
-	struct expr *i, *n, *prev = NULL, *elem, *newelem = NULL, *root, *expr;
+	struct expr *i, *n, *prev = NULL, *elem, *root, *expr;
 	LIST_HEAD(intervals);
-	uint32_t flags;
-	mpz_t p, q;
-
-	mpz_init2(p, set->key->len);
-	mpz_init2(q, set->key->len);
+	mpz_t p;
 
 	list_for_each_entry_safe(i, n, &init->expressions, list) {
-		flags = 0;
-
 		elem = interval_expr_key(i);
 
 		if (elem->key->etype == EXPR_SET_ELEM_CATCHALL)
 			continue;
 
-		if (!prev && segtree_needs_first_segment(set, init, add) &&
+		if (prev)
+			break;
+
+		if (segtree_needs_first_segment(set, init, add) &&
 		    mpz_cmp_ui(elem->key->range.low, 0)) {
+			mpz_init2(p, set->key->len);
 			mpz_set_ui(p, 0);
-			expr = constant_expr_alloc(&internal_location,
-						   set->key->dtype,
-						   set->key->byteorder,
-						   set->key->len, NULL);
-			mpz_set(expr->value, p);
+			expr = constant_range_expr_alloc(&internal_location,
+							 set->key->dtype,
+							 set->key->byteorder,
+							 set->key->len, p, p);
+			mpz_clear(p);
+
 			root = set_elem_expr_alloc(&internal_location, expr);
 			if (i->etype == EXPR_MAPPING) {
 				root = mapping_expr_alloc(&internal_location,
@@ -715,65 +714,129 @@ int set_to_intervals(const struct set *set, struct expr *init, bool add)
 			}
 			root->flags |= EXPR_F_INTERVAL_END;
 			list_add(&root->list, &intervals);
-			init->size++;
+			break;
 		}
-
-		if (newelem) {
-			mpz_set(p, interval_expr_key(newelem)->key->value);
-			if (set->key->byteorder == BYTEORDER_HOST_ENDIAN)
-				mpz_switch_byteorder(p, set->key->len / BITS_PER_BYTE);
-
-			if (!(set->flags & NFT_SET_ANONYMOUS) ||
-			    mpz_cmp(p, elem->key->range.low) != 0)
-				list_add_tail(&newelem->list, &intervals);
-			else
-				expr_free(newelem);
-		}
-		newelem = NULL;
-
-		if (mpz_scan0(elem->key->range.high, 0) != set->key->len) {
-			mpz_add_ui(p, elem->key->range.high, 1);
-			expr = constant_expr_alloc(&elem->key->location, set->key->dtype,
-						   set->key->byteorder, set->key->len,
-						   NULL);
-			mpz_set(expr->value, p);
-			if (set->key->byteorder == BYTEORDER_HOST_ENDIAN)
-				mpz_switch_byteorder(expr->value, set->key->len / BITS_PER_BYTE);
-
-			newelem = set_elem_expr_alloc(&expr->location, expr);
-			if (i->etype == EXPR_MAPPING) {
-				newelem = mapping_expr_alloc(&expr->location,
-							     newelem,
-							     expr_get(i->right));
-			}
-			newelem->flags |= EXPR_F_INTERVAL_END;
-		} else {
-			flags = EXPR_F_INTERVAL_OPEN;
-		}
-
-		expr = constant_expr_alloc(&elem->key->location, set->key->dtype,
-					   set->key->byteorder, set->key->len, NULL);
-
-		mpz_set(expr->value, elem->key->range.low);
-		if (set->key->byteorder == BYTEORDER_HOST_ENDIAN)
-			mpz_switch_byteorder(expr->value, set->key->len / BITS_PER_BYTE);
-
-		expr_free(elem->key);
-		elem->key = expr;
-		i->flags |= flags;
-		init->size++;
-		list_move_tail(&i->list, &intervals);
-
 		prev = i;
 	}
 
-	if (newelem)
-		list_add_tail(&newelem->list, &intervals);
-
 	list_splice_init(&intervals, &init->expressions);
 
-	mpz_clear(p);
-	mpz_clear(q);
+	return 0;
+}
+
+/* This only works for the supported stateful statements. */
+static void set_elem_stmt_clone(struct expr *dst, const struct expr *src)
+{
+	struct stmt *stmt, *nstmt;
+
+	list_for_each_entry(stmt, &src->stmt_list, list) {
+		nstmt = xzalloc(sizeof(*stmt));
+		*nstmt = *stmt;
+		list_add_tail(&nstmt->list, &dst->stmt_list);
+	}
+}
+
+static void set_elem_expr_copy(struct expr *dst, const struct expr *src)
+{
+	if (src->comment)
+		dst->comment = xstrdup(src->comment);
+	if (src->timeout)
+		dst->timeout = src->timeout;
+	if (src->expiration)
+		dst->expiration = src->expiration;
+
+	set_elem_stmt_clone(dst, src);
+}
+
+static struct expr *setelem_key(struct expr *expr)
+{
+	struct expr *key;
+
+	switch (expr->etype) {
+	case EXPR_MAPPING:
+		key = expr->left->key;
+		break;
+	case EXPR_SET_ELEM:
+		key = expr->key;
+		break;
+	default:
+		BUG("unhandled expression type %d\n", expr->etype);
+		return NULL;
+	}
+
+	return key;
+}
+
+int setelem_to_interval(const struct set *set, struct expr *elem,
+			struct expr *next_elem, struct list_head *intervals)
+{
+	struct expr *key, *next_key = NULL, *low, *high;
+	bool adjacent = false;
+
+	key = setelem_key(elem);
+	if (key->etype == EXPR_SET_ELEM_CATCHALL)
+		return 0;
+
+	if (next_elem) {
+		next_key = setelem_key(next_elem);
+		if (next_key->etype == EXPR_SET_ELEM_CATCHALL)
+			next_key = NULL;
+	}
+
+	assert(key->etype == EXPR_RANGE_VALUE);
+	assert(!next_key || next_key->etype == EXPR_RANGE_VALUE);
+
+	/* skip end element for adjacents intervals in anonymous sets. */
+	if (!(elem->flags & EXPR_F_INTERVAL_END) && next_key) {
+		mpz_t p;
+
+		mpz_init2(p, set->key->len);
+		mpz_add_ui(p, key->range.high, 1);
+
+		if (!mpz_cmp(p, next_key->range.low))
+			adjacent = true;
+
+		mpz_clear(p);
+	}
+
+	low = constant_expr_alloc(&key->location, set->key->dtype,
+				  set->key->byteorder, set->key->len, NULL);
+
+	mpz_set(low->value, key->range.low);
+	if (set->key->byteorder == BYTEORDER_HOST_ENDIAN)
+		mpz_switch_byteorder(low->value, set->key->len / BITS_PER_BYTE);
+
+	low = set_elem_expr_alloc(&key->location, low);
+	set_elem_expr_copy(low, interval_expr_key(elem));
+
+	if (elem->etype == EXPR_MAPPING)
+		low = mapping_expr_alloc(&elem->location,
+					 low, expr_get(elem->right));
+
+	list_add_tail(&low->list, intervals);
+
+	if (adjacent)
+		return 0;
+	else if (!mpz_cmp_ui(key->value, 0) && elem->flags & EXPR_F_INTERVAL_END) {
+		low->flags |= EXPR_F_INTERVAL_END;
+		return 0;
+	} else if (mpz_scan0(key->range.high, 0) == set->key->len) {
+		low->flags |= EXPR_F_INTERVAL_OPEN;
+		return 0;
+	}
+
+	high = constant_expr_alloc(&key->location, set->key->dtype,
+				   set->key->byteorder, set->key->len,
+				   NULL);
+	mpz_set(high->value, key->range.high);
+	mpz_add_ui(high->value, high->value, 1);
+	if (set->key->byteorder == BYTEORDER_HOST_ENDIAN)
+		mpz_switch_byteorder(high->value, set->key->len / BITS_PER_BYTE);
+
+	high = set_elem_expr_alloc(&key->location, high);
+
+	high->flags |= EXPR_F_INTERVAL_END;
+	list_add_tail(&high->list, intervals);
 
 	return 0;
 }

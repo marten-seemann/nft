@@ -349,6 +349,14 @@ static inline void list_splice_tail_init(struct list_head *list,
 	list_entry((ptr)->next, type, member)
 
 /**
+ * list_prev_entry - get the prev element in list
+ * @ptr:        the type * to cursor
+ * @member:     the name of the list_head within the struct.
+ */
+#define list_prev_entry(ptr, member) \
+        list_entry((ptr)->member.prev, typeof(*(ptr)), member)
+
+/**
  * list_last_entry - get the last element from a list
  * @ptr:        the list head to take the element from.
  * @type:       the type of the struct this is embedded in.
