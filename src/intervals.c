@@ -17,15 +17,24 @@ static void set_to_range(struct expr *init);
 
 static void setelem_expr_to_range(struct expr *expr)
 {
-	unsigned char data[sizeof(struct in6_addr) * BITS_PER_BYTE];
-	struct expr *key, *value;
+	struct expr *key;
 	mpz_t rop;
 
 	assert(expr->etype == EXPR_SET_ELEM);
 
 	switch (expr->key->etype) {
 	case EXPR_SET_ELEM_CATCHALL:
+	case EXPR_RANGE_VALUE:
+		break;
 	case EXPR_RANGE:
+		key = constant_range_expr_alloc(&expr->location,
+						expr->key->dtype,
+						expr->key->byteorder,
+						expr->key->len,
+						expr->key->left->value,
+						expr->key->right->value);
+		expr_free(expr->key);
+		expr->key = key;
 		break;
 	case EXPR_PREFIX:
 		if (expr->key->prefix->etype != EXPR_VALUE)
@@ -37,16 +46,13 @@ static void setelem_expr_to_range(struct expr *expr)
 			mpz_switch_byteorder(expr->key->prefix->value, expr->len / BITS_PER_BYTE);
 
 		mpz_ior(rop, rop, expr->key->prefix->value);
-	        mpz_export_data(data, rop, expr->key->prefix->byteorder,
-				expr->key->prefix->len / BITS_PER_BYTE);
+		key = constant_range_expr_alloc(&expr->location,
+						expr->key->dtype,
+						expr->key->byteorder,
+						expr->key->len,
+						expr->key->prefix->value,
+						rop);
 		mpz_clear(rop);
-		value = constant_expr_alloc(&expr->location,
-					    expr->key->prefix->dtype,
-					    expr->key->prefix->byteorder,
-					    expr->key->prefix->len, data);
-		key = range_expr_alloc(&expr->location,
-				       expr_get(expr->key->prefix),
-				       value);
 		expr_free(expr->key);
 		expr->key = key;
 		break;
@@ -54,9 +60,12 @@ static void setelem_expr_to_range(struct expr *expr)
 		if (expr_basetype(expr)->type == TYPE_STRING)
 			mpz_switch_byteorder(expr->key->value, expr->len / BITS_PER_BYTE);
 
-		key = range_expr_alloc(&expr->location,
-				       expr_clone(expr->key),
-				       expr_get(expr->key));
+		key = constant_range_expr_alloc(&expr->location,
+						expr->key->dtype,
+						expr->key->byteorder,
+						expr->key->len,
+						expr->key->value,
+						expr->key->value);
 		expr_free(expr->key);
 		expr->key = key;
 		break;
@@ -76,8 +85,8 @@ static void purge_elem(struct set_automerge_ctx *ctx, struct expr *i)
 {
 	if (ctx->debug_mask & NFT_DEBUG_SEGTREE) {
 		pr_gmp_debug("remove: [%Zx-%Zx]\n",
-			     i->key->left->value,
-			     i->key->right->value);
+			     i->key->range.low,
+			     i->key->range.high);
 	}
 	list_move_tail(&i->list, &ctx->purge->expressions);
 }
@@ -107,19 +116,16 @@ static bool merge_ranges(struct set_automerge_ctx *ctx,
 	if (prev->flags & EXPR_F_KERNEL) {
 		prev->location = i->location;
 		purge_elem(ctx, prev);
-		expr_free(i->key->left);
-		i->key->left = expr_get(prev->key->left);
+		mpz_set(i->key->range.low, prev->key->range.low);
 		mpz_set(prev_range->high, range->high);
 		return true;
 	} else if (i->flags & EXPR_F_KERNEL) {
 		i->location = prev->location;
 		purge_elem(ctx, i);
-		expr_free(prev->key->right);
-		prev->key->right = expr_get(i->key->right);
+		mpz_set(prev->key->range.high, i->key->range.high);
 		mpz_set(prev_range->high, range->high);
 	} else {
-		expr_free(prev->key->right);
-		prev->key->right = expr_get(i->key->right);
+		mpz_set(prev->key->range.high, i->key->range.high);
 		mpz_set(prev_range->high, range->high);
 		list_del(&i->list);
 		expr_free(i);
@@ -272,7 +278,7 @@ int set_automerge(struct list_head *msgs, struct cmd *cmd, struct set *set,
 		} else if (existing_set) {
 			if (debug_mask & NFT_DEBUG_SEGTREE) {
 				pr_gmp_debug("add: [%Zx-%Zx]\n",
-					     i->key->left->value, i->key->right->value);
+					     i->key->range.low, i->key->range.high);
 			}
 			clone = expr_clone(i);
 			clone->flags |= EXPR_F_KERNEL;
@@ -306,9 +312,8 @@ static void remove_elem(struct expr *prev, struct set *set, struct expr *purge)
 static void __adjust_elem_left(struct set *set, struct expr *prev, struct expr *i)
 {
 	prev->flags &= ~EXPR_F_KERNEL;
-	expr_free(prev->key->left);
-	prev->key->left = expr_get(i->key->right);
-	mpz_add_ui(prev->key->left->value, prev->key->left->value, 1);
+	mpz_set(prev->key->range.low, i->key->range.high);
+	mpz_add_ui(prev->key->range.low, prev->key->range.low, 1);
 	list_move(&prev->list, &set->existing_set->init->expressions);
 }
 
@@ -326,9 +331,8 @@ static void adjust_elem_left(struct set *set, struct expr *prev, struct expr *i,
 static void __adjust_elem_right(struct set *set, struct expr *prev, struct expr *i)
 {
 	prev->flags &= ~EXPR_F_KERNEL;
-	expr_free(prev->key->right);
-	prev->key->right = expr_get(i->key->left);
-	mpz_sub_ui(prev->key->right->value, prev->key->right->value, 1);
+	mpz_set(prev->key->range.high, i->key->range.low);
+	mpz_sub_ui(prev->key->range.high, prev->key->range.high, 1);
 	list_move(&prev->list, &set->existing_set->init->expressions);
 }
 
@@ -357,14 +361,12 @@ static void split_range(struct set *set, struct expr *prev, struct expr *i,
 
 	prev->flags &= ~EXPR_F_KERNEL;
 	clone = expr_clone(prev);
-	expr_free(clone->key->left);
-	clone->key->left = expr_get(i->key->right);
-	mpz_add_ui(clone->key->left->value, i->key->right->value, 1);
+	mpz_set(clone->key->range.low, i->key->range.high);
+	mpz_add_ui(clone->key->range.low, i->key->range.high, 1);
 	list_add_tail(&clone->list, &set->existing_set->init->expressions);
 
-	expr_free(prev->key->right);
-	prev->key->right = expr_get(i->key->left);
-	mpz_sub_ui(prev->key->right->value, i->key->left->value, 1);
+	mpz_set(prev->key->range.high, i->key->range.low);
+	mpz_sub_ui(prev->key->range.high, i->key->range.low, 1);
 	list_move(&prev->list, &set->existing_set->init->expressions);
 
 	list_del(&i->list);
@@ -537,13 +539,13 @@ int set_delete(struct list_head *msgs, struct cmd *cmd, struct set *set,
 	if (debug_mask & NFT_DEBUG_SEGTREE) {
 		list_for_each_entry(i, &init->expressions, list)
 			pr_gmp_debug("remove: [%Zx-%Zx]\n",
-				     i->key->left->value, i->key->right->value);
+				     i->key->range.low, i->key->range.high);
 		list_for_each_entry(i, &add->expressions, list)
 			pr_gmp_debug("add: [%Zx-%Zx]\n",
-				     i->key->left->value, i->key->right->value);
+				     i->key->range.low, i->key->range.high);
 		list_for_each_entry(i, &existing_set->init->expressions, list)
 			pr_gmp_debug("existing: [%Zx-%Zx]\n",
-				     i->key->left->value, i->key->right->value);
+				     i->key->range.low, i->key->range.high);
 	}
 
 	if (list_empty(&add->expressions)) {
@@ -698,7 +700,7 @@ int set_to_intervals(const struct set *set, struct expr *init, bool add)
 			continue;
 
 		if (!prev && segtree_needs_first_segment(set, init, add) &&
-		    mpz_cmp_ui(elem->key->left->value, 0)) {
+		    mpz_cmp_ui(elem->key->range.low, 0)) {
 			mpz_set_ui(p, 0);
 			expr = constant_expr_alloc(&internal_location,
 						   set->key->dtype,
@@ -722,15 +724,15 @@ int set_to_intervals(const struct set *set, struct expr *init, bool add)
 				mpz_switch_byteorder(p, set->key->len / BITS_PER_BYTE);
 
 			if (!(set->flags & NFT_SET_ANONYMOUS) ||
-			    mpz_cmp(p, elem->key->left->value) != 0)
+			    mpz_cmp(p, elem->key->range.low) != 0)
 				list_add_tail(&newelem->list, &intervals);
 			else
 				expr_free(newelem);
 		}
 		newelem = NULL;
 
-		if (mpz_scan0(elem->key->right->value, 0) != set->key->len) {
-			mpz_add_ui(p, elem->key->right->value, 1);
+		if (mpz_scan0(elem->key->range.high, 0) != set->key->len) {
+			mpz_add_ui(p, elem->key->range.high, 1);
 			expr = constant_expr_alloc(&elem->key->location, set->key->dtype,
 						   set->key->byteorder, set->key->len,
 						   NULL);
@@ -752,7 +754,7 @@ int set_to_intervals(const struct set *set, struct expr *init, bool add)
 		expr = constant_expr_alloc(&elem->key->location, set->key->dtype,
 					   set->key->byteorder, set->key->len, NULL);
 
-		mpz_set(expr->value, elem->key->left->value);
+		mpz_set(expr->value, elem->key->range.low);
 		if (set->key->byteorder == BYTEORDER_HOST_ENDIAN)
 			mpz_switch_byteorder(expr->value, set->key->len / BITS_PER_BYTE);
 

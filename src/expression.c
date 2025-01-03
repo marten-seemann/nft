@@ -542,6 +542,84 @@ struct expr *constant_expr_splice(struct expr *expr, unsigned int len)
 	return slice;
 }
 
+static void constant_range_expr_print_one(const struct expr *expr,
+					  const mpz_t value,
+					  struct output_ctx *octx)
+{
+	unsigned int len = div_round_up(expr->len, BITS_PER_BYTE);
+	unsigned char data[len];
+	struct expr *dummy;
+
+	/* create dummy temporary constant expression to print range. */
+	mpz_export_data(data, value, expr->byteorder, len);
+	dummy = constant_expr_alloc(&expr->location, expr->dtype,
+				    expr->byteorder, expr->len, data);
+	expr_print(dummy, octx);
+	expr_free(dummy);
+}
+
+static void constant_range_expr_print(const struct expr *expr,
+				      struct output_ctx *octx)
+{
+	unsigned int flags = octx->flags;
+
+	/* similar to range_expr_print(). */
+	octx->flags &= ~(NFT_CTX_OUTPUT_SERVICE |
+			 NFT_CTX_OUTPUT_REVERSEDNS |
+			 NFT_CTX_OUTPUT_GUID);
+	octx->flags |= NFT_CTX_OUTPUT_NUMERIC_ALL;
+
+	constant_range_expr_print_one(expr, expr->range.low, octx);
+	nft_print(octx, "-");
+	constant_range_expr_print_one(expr, expr->range.high, octx);
+
+	octx->flags = flags;
+}
+
+static bool constant_range_expr_cmp(const struct expr *e1, const struct expr *e2)
+{
+	return expr_basetype(e1) == expr_basetype(e2) &&
+	       !mpz_cmp(e1->range.low, e2->range.low) &&
+	       !mpz_cmp(e1->range.high, e2->range.high);
+}
+
+static void constant_range_expr_clone(struct expr *new, const struct expr *expr)
+{
+	mpz_init_set(new->range.low, expr->range.low);
+	mpz_init_set(new->range.high, expr->range.high);
+}
+
+static void constant_range_expr_destroy(struct expr *expr)
+{
+	mpz_clear(expr->range.low);
+	mpz_clear(expr->range.high);
+}
+
+static const struct expr_ops constant_range_expr_ops = {
+	.type		= EXPR_RANGE_VALUE,
+	.name		= "range_value",
+	.print		= constant_range_expr_print,
+	.cmp		= constant_range_expr_cmp,
+	.clone		= constant_range_expr_clone,
+	.destroy	= constant_range_expr_destroy,
+};
+
+struct expr *constant_range_expr_alloc(const struct location *loc,
+				       const struct datatype *dtype,
+				       enum byteorder byteorder,
+				       unsigned int len, mpz_t low, mpz_t high)
+{
+	struct expr *expr;
+
+	expr = expr_alloc(loc, EXPR_RANGE_VALUE, dtype, byteorder, len);
+	expr->flags = EXPR_F_CONSTANT | EXPR_F_SINGLETON;
+
+	mpz_init_set(expr->range.low, low);
+	mpz_init_set(expr->range.high, high);
+
+	return expr;
+}
+
 /*
  * Allocate a constant expression with a single bit set at position n.
  */
@@ -1545,6 +1623,8 @@ void range_expr_value_low(mpz_t rop, const struct expr *expr)
 	switch (expr->etype) {
 	case EXPR_VALUE:
 		return mpz_set(rop, expr->value);
+	case EXPR_RANGE_VALUE:
+		return mpz_set(rop, expr->range.low);
 	case EXPR_PREFIX:
 		return range_expr_value_low(rop, expr->prefix);
 	case EXPR_RANGE:
@@ -1565,6 +1645,8 @@ void range_expr_value_high(mpz_t rop, const struct expr *expr)
 	switch (expr->etype) {
 	case EXPR_VALUE:
 		return mpz_set(rop, expr->value);
+	case EXPR_RANGE_VALUE:
+		return mpz_set(rop, expr->range.high);
 	case EXPR_PREFIX:
 		range_expr_value_low(rop, expr->prefix);
 		assert(expr->len >= expr->prefix_len);
@@ -1616,6 +1698,7 @@ static const struct expr_ops *__expr_ops_by_type(enum expr_types etype)
 	case EXPR_XFRM: return &xfrm_expr_ops;
 	case EXPR_SET_ELEM_CATCHALL: return &set_elem_catchall_expr_ops;
 	case EXPR_FLAGCMP: return &flagcmp_expr_ops;
+	case EXPR_RANGE_VALUE: return &constant_range_expr_ops;
 	}
 
 	return NULL;

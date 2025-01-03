@@ -48,6 +48,7 @@
  * @EXPR_XFRM		XFRM (ipsec) expression
  * @EXPR_SET_ELEM_CATCHALL catchall element expression
  * @EXPR_FLAGCMP	flagcmp expression
+ * @EXPR_RANGE_VALUE	constant range expression
  */
 enum expr_types {
 	EXPR_INVALID,
@@ -80,6 +81,7 @@ enum expr_types {
 	EXPR_XFRM,
 	EXPR_SET_ELEM_CATCHALL,
 	EXPR_FLAGCMP,
+	EXPR_RANGE_VALUE,
 
 	EXPR_MAX = EXPR_FLAGCMP
 };
@@ -279,6 +281,11 @@ struct expr {
 			mpz_t			value;
 		};
 		struct {
+			/* EXPR_RANGE_VALUE */
+			mpz_t			low;
+			mpz_t			high;
+		} range;
+		struct {
 			/* EXPR_PREFIX */
 			struct expr		*prefix;
 			unsigned int		prefix_len;
@@ -472,6 +479,12 @@ extern struct expr *constant_expr_alloc(const struct location *loc,
 extern struct expr *constant_expr_join(const struct expr *e1,
 				       const struct expr *e2);
 extern struct expr *constant_expr_splice(struct expr *expr, unsigned int len);
+
+extern struct expr *constant_range_expr_alloc(const struct location *loc,
+					      const struct datatype *dtype,
+					      enum byteorder byteorder,
+					      unsigned int len,
+					      mpz_t low, mpz_t high);
 
 extern struct expr *flag_expr_alloc(const struct location *loc,
 				    const struct datatype *dtype,
