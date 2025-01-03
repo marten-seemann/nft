@@ -148,6 +148,14 @@ static void set_sort_splice(struct expr *init, struct set *set)
 	}
 }
 
+static void set_prev_elem(struct expr **prev, struct expr *i,
+			  struct range *prev_range, struct range *range)
+{
+	*prev = i;
+	mpz_set(prev_range->low, range->low);
+	mpz_set(prev_range->high, range->high);
+}
+
 static void setelem_automerge(struct set_automerge_ctx *ctx)
 {
 	struct expr *i, *next, *prev = NULL;
@@ -168,9 +176,7 @@ static void setelem_automerge(struct set_automerge_ctx *ctx)
 		range_expr_value_high(range.high, i);
 
 		if (!prev) {
-			prev = i;
-			mpz_set(prev_range.low, range.low);
-			mpz_set(prev_range.high, range.high);
+			set_prev_elem(&prev, i, &prev_range, &range);
 			continue;
 		}
 
@@ -192,9 +198,7 @@ static void setelem_automerge(struct set_automerge_ctx *ctx)
 			}
 		}
 
-		prev = i;
-		mpz_set(prev_range.low, range.low);
-		mpz_set(prev_range.high, range.high);
+		set_prev_elem(&prev, i, &prev_range, &range);
 	}
 
 	mpz_clear(prev_range.low);
