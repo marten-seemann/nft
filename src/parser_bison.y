@@ -1940,12 +1940,14 @@ table_flags		:	table_flag
 table_flag		:	STRING
 			{
 				$$ = parse_table_flag($1);
-				free_const($1);
 				if ($$ == 0) {
 					erec_queue(error(&@1, "unknown table option %s", $1),
 						   state->msgs);
+					free_const($1);
 					YYERROR;
 				}
+
+				free_const($1);
 			}
 			;
 
