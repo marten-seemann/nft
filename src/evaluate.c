@@ -842,8 +842,6 @@ static int resolve_ll_protocol_conflict(struct eval_ctx *ctx,
 				return -1;
 		}
 	} else {
-		unsigned int i;
-
 		/* payload desc stored in the L2 header stack? No conflict. */
 		for (i = 0; i < pctx->stacked_ll_count; i++) {
 			if (pctx->stacked_ll[i] == payload->payload.desc)
