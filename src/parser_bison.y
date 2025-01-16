@@ -723,6 +723,9 @@ int nft_lex(void *, void *, void *);
 %type <handle>			basehook_spec
 %destructor { handle_free(&$$); } basehook_spec
 
+%type <handle>			list_cmd_spec_any	list_cmd_spec_table
+%destructor { handle_free(&$$); } list_cmd_spec_any	list_cmd_spec_table
+
 %type <val>			family_spec family_spec_explicit
 %type <val32>			int_num	chain_policy
 %type <prio_spec>		extended_prio_spec prio_spec
@@ -1570,6 +1573,13 @@ get_cmd			:	ELEMENT		set_spec	set_block_expr
 			}
 			;
 
+list_cmd_spec_table	:	TABLE	table_spec	{ $$ = $2; }
+			|	table_spec
+			;
+list_cmd_spec_any	:	list_cmd_spec_table
+			|	ruleset_spec
+			;
+
 list_cmd		:	TABLE		table_spec
 			{
 				$$ = cmd_alloc(CMD_LIST, CMD_OBJ_TABLE, &$2, &@$, NULL);
@@ -1586,73 +1596,49 @@ list_cmd		:	TABLE		table_spec
 			{
 				$$ = cmd_alloc(CMD_LIST, CMD_OBJ_CHAINS, &$2, &@$, NULL);
 			}
-			|	SETS		ruleset_spec
+			|	SETS		list_cmd_spec_any
 			{
 				$$ = cmd_alloc(CMD_LIST, CMD_OBJ_SETS, &$2, &@$, NULL);
-			}
-			|	SETS		TABLE	table_spec
-			{
-				$$ = cmd_alloc(CMD_LIST, CMD_OBJ_SETS, &$3, &@$, NULL);
 			}
 			|	SET		set_spec
 			{
 				$$ = cmd_alloc(CMD_LIST, CMD_OBJ_SET, &$2, &@$, NULL);
 			}
-			|	COUNTERS	ruleset_spec
+			|	COUNTERS	list_cmd_spec_any
 			{
 				$$ = cmd_alloc(CMD_LIST, CMD_OBJ_COUNTERS, &$2, &@$, NULL);
-			}
-			|	COUNTERS	TABLE	table_spec
-			{
-				$$ = cmd_alloc(CMD_LIST, CMD_OBJ_COUNTERS, &$3, &@$, NULL);
 			}
 			|	COUNTER		obj_spec	close_scope_counter
 			{
 				$$ = cmd_alloc(CMD_LIST, CMD_OBJ_COUNTER, &$2, &@$, NULL);
 			}
-			|	QUOTAS		ruleset_spec
+			|	QUOTAS		list_cmd_spec_any
 			{
 				$$ = cmd_alloc(CMD_LIST, CMD_OBJ_QUOTAS, &$2, &@$, NULL);
-			}
-			|	QUOTAS		TABLE	table_spec
-			{
-				$$ = cmd_alloc(CMD_LIST, CMD_OBJ_QUOTAS, &$3, &@$, NULL);
 			}
 			|	QUOTA		obj_spec	close_scope_quota
 			{
 				$$ = cmd_alloc(CMD_LIST, CMD_OBJ_QUOTA, &$2, &@$, NULL);
 			}
-			|	LIMITS		ruleset_spec
+			|	LIMITS		list_cmd_spec_any
 			{
 				$$ = cmd_alloc(CMD_LIST, CMD_OBJ_LIMITS, &$2, &@$, NULL);
-			}
-			|	LIMITS		TABLE	table_spec
-			{
-				$$ = cmd_alloc(CMD_LIST, CMD_OBJ_LIMITS, &$3, &@$, NULL);
 			}
 			|	LIMIT		obj_spec	close_scope_limit
 			{
 				$$ = cmd_alloc(CMD_LIST, CMD_OBJ_LIMIT, &$2, &@$, NULL);
 			}
-			|	SECMARKS	ruleset_spec
+			|	SECMARKS	list_cmd_spec_any
 			{
 				$$ = cmd_alloc(CMD_LIST, CMD_OBJ_SECMARKS, &$2, &@$, NULL);
-			}
-			|	SECMARKS	TABLE	table_spec
-			{
-				$$ = cmd_alloc(CMD_LIST, CMD_OBJ_SECMARKS, &$3, &@$, NULL);
 			}
 			|	SECMARK		obj_spec	close_scope_secmark
 			{
 				$$ = cmd_alloc(CMD_LIST, CMD_OBJ_SECMARK, &$2, &@$, NULL);
 			}
-			|	SYNPROXYS	ruleset_spec
+			|	SYNPROXYS	list_cmd_spec_any
 			{
 				$$ = cmd_alloc(CMD_LIST, CMD_OBJ_SYNPROXYS, &$2, &@$, NULL);
-			}
-			|	SYNPROXYS	TABLE	table_spec
-			{
-				$$ = cmd_alloc(CMD_LIST, CMD_OBJ_SYNPROXYS, &$3, &@$, NULL);
 			}
 			|	SYNPROXY	obj_spec	close_scope_synproxy
 			{
@@ -1678,7 +1664,7 @@ list_cmd		:	TABLE		table_spec
 			{
 				$$ = cmd_alloc(CMD_LIST, CMD_OBJ_METER, &$2, &@$, NULL);
 			}
-			|       FLOWTABLES      ruleset_spec
+			|       FLOWTABLES      list_cmd_spec_any
 			{
 				$$ = cmd_alloc(CMD_LIST, CMD_OBJ_FLOWTABLES, &$2, &@$, NULL);
 			}
@@ -1686,7 +1672,7 @@ list_cmd		:	TABLE		table_spec
 			{
 				$$ = cmd_alloc(CMD_LIST, CMD_OBJ_FLOWTABLE, &$2, &@$, NULL);
 			}
-			|	MAPS		ruleset_spec
+			|	MAPS		list_cmd_spec_any
 			{
 				$$ = cmd_alloc(CMD_LIST, CMD_OBJ_MAPS, &$2, &@$, NULL);
 			}
@@ -1728,34 +1714,16 @@ basehook_spec		:	ruleset_spec
 			}
 			;
 
-reset_cmd		:	COUNTERS	ruleset_spec
+reset_cmd		:	COUNTERS	list_cmd_spec_any
 			{
 				$$ = cmd_alloc(CMD_RESET, CMD_OBJ_COUNTERS, &$2, &@$, NULL);
-			}
-			|	COUNTERS	table_spec
-			{
-				$$ = cmd_alloc(CMD_RESET, CMD_OBJ_COUNTERS, &$2, &@$, NULL);
-			}
-			|	COUNTERS	TABLE	table_spec
-			{
-				/* alias of previous rule. */
-				$$ = cmd_alloc(CMD_RESET, CMD_OBJ_COUNTERS, &$3, &@$, NULL);
 			}
 			|       COUNTER         obj_spec	close_scope_counter
 			{
 				$$ = cmd_alloc(CMD_RESET, CMD_OBJ_COUNTER, &$2,&@$, NULL);
 			}
-			|	QUOTAS		ruleset_spec
+			|	QUOTAS		list_cmd_spec_any
 			{
-				$$ = cmd_alloc(CMD_RESET, CMD_OBJ_QUOTAS, &$2, &@$, NULL);
-			}
-			|	QUOTAS		TABLE	table_spec
-			{
-				$$ = cmd_alloc(CMD_RESET, CMD_OBJ_QUOTAS, &$3, &@$, NULL);
-			}
-			|	QUOTAS		table_spec
-			{
-				/* alias of previous rule. */
 				$$ = cmd_alloc(CMD_RESET, CMD_OBJ_QUOTAS, &$2, &@$, NULL);
 			}
 			|       QUOTA           obj_spec	close_scope_quota
@@ -1766,14 +1734,9 @@ reset_cmd		:	COUNTERS	ruleset_spec
 			{
 				$$ = cmd_alloc(CMD_RESET, CMD_OBJ_RULES, &$2, &@$, NULL);
 			}
-			|	RULES		table_spec
+			|	RULES		list_cmd_spec_table
 			{
 				$$ = cmd_alloc(CMD_RESET, CMD_OBJ_TABLE, &$2, &@$, NULL);
-			}
-			|	RULES		TABLE	table_spec
-			{
-				/* alias of previous rule. */
-				$$ = cmd_alloc(CMD_RESET, CMD_OBJ_TABLE, &$3, &@$, NULL);
 			}
 			|	RULES		chain_spec
 			{
