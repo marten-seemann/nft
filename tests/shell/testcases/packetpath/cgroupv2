@@ -126,7 +126,7 @@ if [ "$doit" != "setup-done" ];then
 	rc=$?
 else
 	want_inode=$(stat --printf=%i "/sys/fs/cgroup/nft-test1a/")
-	mount -t cgroup2 cgroup2 /sys/fs/cgroup
+	mount --bind /sys/fs/cgroup/nft-test1a/ /sys/fs/cgroup/
 
 	# /sys/fs/cgroup/  should now match "/sys/fs/cgroup/nft-test1a/cgroup.procs"
 	rootinode=$(stat --printf=%i "/sys/fs/cgroup/")
@@ -138,6 +138,8 @@ else
 
 	do_initial_setup
 	run_test
+
+	umount /sys/fs/group/
 fi
 
 exit $rc
