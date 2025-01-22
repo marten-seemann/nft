@@ -3356,7 +3356,7 @@ static int stmt_evaluate_payload(struct eval_ctx *ctx, struct stmt *stmt)
 
 static int stmt_evaluate_meter(struct eval_ctx *ctx, struct stmt *stmt)
 {
-	struct expr *key, *set, *setref;
+	struct expr *key, *setref;
 	struct set *existing_set;
 	struct table *table;
 
@@ -3367,7 +3367,9 @@ static int stmt_evaluate_meter(struct eval_ctx *ctx, struct stmt *stmt)
 		return table_not_found(ctx);
 
 	existing_set = set_cache_find(table, stmt->meter.name);
-	if (existing_set)
+	if (existing_set &&
+	    (!set_is_meter_compat(existing_set->flags) ||
+	     set_is_map(existing_set->flags)))
 		return cmd_error(ctx, &stmt->location,
 				 "%s; meter '%s' overlaps an existing %s '%s' in family %s",
 				 strerror(EEXIST),
@@ -3388,17 +3390,40 @@ static int stmt_evaluate_meter(struct eval_ctx *ctx, struct stmt *stmt)
 
 	/* Declare an empty set */
 	key = stmt->meter.key;
-	set = set_expr_alloc(&key->location, NULL);
-	set->set_flags |= NFT_SET_EVAL;
-	if (key->timeout)
-		set->set_flags |= NFT_SET_TIMEOUT;
+	if (existing_set) {
+		if ((existing_set->flags & NFT_SET_TIMEOUT) && !key->timeout)
+			return expr_error(ctx->msgs, stmt->meter.key,
+					  "existing set '%s' has timeout flag",
+					  stmt->meter.name);
 
-	setref = implicit_set_declaration(ctx, stmt->meter.name,
-					  expr_get(key), NULL, set, 0);
+		if ((existing_set->flags & NFT_SET_TIMEOUT) == 0 && key->timeout)
+			return expr_error(ctx->msgs, stmt->meter.key,
+					  "existing set '%s' lacks timeout flag",
+					  stmt->meter.name);
+
+		if (stmt->meter.size > 0 && existing_set->desc.size != stmt->meter.size)
+			return expr_error(ctx->msgs, stmt->meter.key,
+					  "existing set '%s' has size %u, meter has %u",
+					  stmt->meter.name, existing_set->desc.size,
+					  stmt->meter.size);
+		setref = set_ref_expr_alloc(&key->location, existing_set);
+	} else {
+		struct expr *set;
+
+		set = set_expr_alloc(&key->location, existing_set);
+		if (key->timeout)
+			set->set_flags |= NFT_SET_TIMEOUT;
+
+		set->set_flags |= NFT_SET_EVAL;
+		setref = implicit_set_declaration(ctx, stmt->meter.name,
+						  expr_get(key), NULL, set, 0);
+		if (setref)
+			setref->set->desc.size = stmt->meter.size;
+	}
+
 	if (!setref)
 		return -1;
 
-	setref->set->desc.size = stmt->meter.size;
 	stmt->meter.set = setref;
 
 	if (stmt_evaluate(ctx, stmt->meter.stmt) < 0)
