@@ -2451,7 +2451,7 @@ static void binop_adjust(const struct expr *binop, struct expr *right,
 	}
 }
 
-static void __binop_postprocess(struct rule_pp_ctx *ctx,
+static bool __binop_postprocess(struct rule_pp_ctx *ctx,
 				struct expr *expr,
 				struct expr *left,
 				struct expr *mask,
@@ -2501,17 +2501,27 @@ static void __binop_postprocess(struct rule_pp_ctx *ctx,
 			expr_set_type(right, left->dtype, left->byteorder);
 
 		expr_free(binop);
+		return true;
+	} else if (left->etype == EXPR_PAYLOAD &&
+		   expr->right->etype == EXPR_VALUE &&
+		   payload_expr_trim_force(left, mask, &shift)) {
+			mpz_rshift_ui(expr->right->value, shift);
+			*expr_binop = expr_get(left);
+			expr_free(binop);
+			return true;
 	}
+
+	return false;
 }
 
-static void binop_postprocess(struct rule_pp_ctx *ctx, struct expr *expr,
+static bool binop_postprocess(struct rule_pp_ctx *ctx, struct expr *expr,
 			      struct expr **expr_binop)
 {
 	struct expr *binop = *expr_binop;
 	struct expr *left = binop->left;
 	struct expr *mask = binop->right;
 
-	__binop_postprocess(ctx, expr, left, mask, expr_binop);
+	return __binop_postprocess(ctx, expr, left, mask, expr_binop);
 }
 
 static void map_binop_postprocess(struct rule_pp_ctx *ctx, struct expr *expr)
@@ -3178,6 +3188,7 @@ static void stmt_payload_binop_postprocess(struct rule_pp_ctx *ctx)
 
 	switch (expr->left->etype) {
 	case EXPR_BINOP: {/* I? */
+		unsigned int shift = 0;
 		mpz_t tmp;
 
 		if (expr->op != OP_OR)
@@ -3211,12 +3222,17 @@ static void stmt_payload_binop_postprocess(struct rule_pp_ctx *ctx)
 		mpz_set(mask->value, bitmask);
 		mpz_clear(bitmask);
 
-		binop_postprocess(ctx, expr, &expr->left);
-		if (!payload_is_known(payload)) {
+		if (!binop_postprocess(ctx, expr, &expr->left) &&
+		    !payload_is_known(payload) &&
+		    !payload_expr_trim_force(payload,
+					     mask, &shift)) {
 			mpz_set(mask->value, tmp);
 			mpz_clear(tmp);
 			return;
 		}
+
+		if (shift)
+			mpz_rshift_ui(value->value, shift);
 
 		mpz_clear(tmp);
 		expr_free(stmt->payload.expr);
@@ -3237,6 +3253,7 @@ static void stmt_payload_binop_postprocess(struct rule_pp_ctx *ctx)
 
 		switch (expr->op) {
 		case OP_AND: { /* IIa */
+			unsigned int shift_unused;
 			mpz_t tmp;
 
 			mpz_init(tmp);
@@ -3248,7 +3265,8 @@ static void stmt_payload_binop_postprocess(struct rule_pp_ctx *ctx)
 			mpz_clear(bitmask);
 
 			stmt_payload_binop_pp(ctx, expr);
-			if (!payload_is_known(expr->left)) {
+			if (!payload_is_known(expr->left) &&
+			    !payload_expr_trim_force(expr->left, mask, &shift_unused)) {
 				mpz_set(mask->value, tmp);
 				mpz_clear(tmp);
 				return;
@@ -3260,6 +3278,7 @@ static void stmt_payload_binop_postprocess(struct rule_pp_ctx *ctx)
 			 * clear the payload expression.
 			 * The "mask" value becomes new stmt->payload.value
 			 * so set this to 0.
+			 * Also the reason why &shift_unused is ignored.
 			 */
 			mpz_set_ui(mask->value, 0);
 			break;
