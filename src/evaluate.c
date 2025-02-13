@@ -2319,6 +2319,51 @@ static int expr_evaluate_mapping(struct eval_ctx *ctx, struct expr **expr)
 	return 0;
 }
 
+static int expr_evaluate_symbol_range(struct eval_ctx *ctx, struct expr **exprp)
+{
+	struct expr *left, *right, *range;
+	struct expr *expr = *exprp;
+
+	left = symbol_expr_alloc(&expr->location, expr->symtype, (struct scope *)expr->scope, expr->identifier_range[0]);
+	if (expr_evaluate_symbol(ctx, &left) < 0) {
+		expr_free(left);
+		return -1;
+	}
+
+	right = symbol_expr_alloc(&expr->location, expr->symtype, (struct scope *)expr->scope, expr->identifier_range[1]);
+	if (expr_evaluate_symbol(ctx, &right) < 0) {
+		expr_free(left);
+		expr_free(right);
+		return -1;
+	}
+
+	/* concatenation and maps need more work to use constant_range_expr. */
+	if (ctx->set && !set_is_map(ctx->set->flags) &&
+	    set_is_non_concat_range(ctx->set) &&
+	    left->etype == EXPR_VALUE &&
+	    right->etype == EXPR_VALUE) {
+		range = constant_range_expr_alloc(&expr->location, left->dtype,
+						  left->byteorder,
+						  left->len,
+						  left->value,
+						  right->value);
+		expr_free(left);
+		expr_free(right);
+		expr_free(expr);
+		*exprp = range;
+		return 0;
+	}
+
+	range = range_expr_alloc(&expr->location, left, right);
+	expr_free(expr);
+	*exprp = range;
+
+	if (expr_evaluate(ctx, exprp) < 0)
+		return -1;
+
+	return 0;
+}
+
 /* We got datatype context via statement. If the basetype is compatible, set
  * this expression datatype to the one of the statement to make it datatype
  * compatible. This is a more conservative approach than enabling datatype
@@ -3027,6 +3072,8 @@ static int expr_evaluate(struct eval_ctx *ctx, struct expr **expr)
 		return expr_evaluate_set_elem_catchall(ctx, expr);
 	case EXPR_FLAGCMP:
 		return expr_evaluate_flagcmp(ctx, expr);
+	case EXPR_RANGE_SYMBOL:
+		return expr_evaluate_symbol_range(ctx, expr);
 	default:
 		BUG("unknown expression type %s\n", expr_name(*expr));
 	}

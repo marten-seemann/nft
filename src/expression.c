@@ -620,6 +620,50 @@ struct expr *constant_range_expr_alloc(const struct location *loc,
 	return expr;
 }
 
+static void symbol_range_expr_print(const struct expr *expr, struct output_ctx *octx)
+{
+	nft_print(octx, "%s", expr->identifier_range[0]);
+	nft_print(octx, "-");
+	nft_print(octx, "%s", expr->identifier_range[1]);
+}
+
+static void symbol_range_expr_clone(struct expr *new, const struct expr *expr)
+{
+	new->symtype	= expr->symtype;
+	new->scope      = expr->scope;
+	new->identifier_range[0] = xstrdup(expr->identifier_range[0]);
+	new->identifier_range[1] = xstrdup(expr->identifier_range[1]);
+}
+
+static void symbol_range_expr_destroy(struct expr *expr)
+{
+	free_const(expr->identifier_range[0]);
+	free_const(expr->identifier_range[1]);
+}
+
+static const struct expr_ops symbol_range_expr_ops = {
+	.type		= EXPR_RANGE_SYMBOL,
+	.name		= "range_symbol",
+	.print		= symbol_range_expr_print,
+	.clone		= symbol_range_expr_clone,
+	.destroy	= symbol_range_expr_destroy,
+};
+
+struct expr *symbol_range_expr_alloc(const struct location *loc,
+				     enum symbol_types type, const struct scope *scope,
+				     const char *identifier_low, const char *identifier_high)
+{
+	struct expr *expr;
+
+	expr = expr_alloc(loc, EXPR_RANGE_SYMBOL, &invalid_type,
+			  BYTEORDER_INVALID, 0);
+	expr->symtype	 = type;
+	expr->scope	 = scope;
+	expr->identifier_range[0] = xstrdup(identifier_low);
+	expr->identifier_range[1] = xstrdup(identifier_high);
+	return expr;
+}
+
 /*
  * Allocate a constant expression with a single bit set at position n.
  */
@@ -1699,6 +1743,7 @@ static const struct expr_ops *__expr_ops_by_type(enum expr_types etype)
 	case EXPR_SET_ELEM_CATCHALL: return &set_elem_catchall_expr_ops;
 	case EXPR_FLAGCMP: return &flagcmp_expr_ops;
 	case EXPR_RANGE_VALUE: return &constant_range_expr_ops;
+	case EXPR_RANGE_SYMBOL: return &symbol_range_expr_ops;
 	}
 
 	return NULL;

@@ -49,6 +49,7 @@
  * @EXPR_SET_ELEM_CATCHALL catchall element expression
  * @EXPR_FLAGCMP	flagcmp expression
  * @EXPR_RANGE_VALUE	constant range expression
+ * @EXPR_RANGE_SYMBOL	unparse symbol range expression
  */
 enum expr_types {
 	EXPR_INVALID,
@@ -82,6 +83,7 @@ enum expr_types {
 	EXPR_SET_ELEM_CATCHALL,
 	EXPR_FLAGCMP,
 	EXPR_RANGE_VALUE,
+	EXPR_RANGE_SYMBOL,
 
 	EXPR_MAX = EXPR_FLAGCMP
 };
@@ -261,9 +263,12 @@ struct expr {
 
 	union {
 		struct {
-			/* EXPR_SYMBOL */
+			/* EXPR_SYMBOL, EXPR_RANGE_SYMBOL */
 			const struct scope	*scope;
-			const char		*identifier;
+			union {
+				const char	*identifier;
+				const char	*identifier_range[2];
+			};
 			enum symbol_types	symtype;
 		};
 		struct {
@@ -485,6 +490,10 @@ extern struct expr *constant_range_expr_alloc(const struct location *loc,
 					      enum byteorder byteorder,
 					      unsigned int len,
 					      mpz_t low, mpz_t high);
+
+struct expr *symbol_range_expr_alloc(const struct location *loc,
+				     enum symbol_types type, const struct scope *scope,
+				     const char *identifier_low, const char *identifier_high);
 
 extern struct expr *flag_expr_alloc(const struct location *loc,
 				    const struct datatype *dtype,

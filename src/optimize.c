@@ -139,6 +139,7 @@ static bool stmt_expr_supported(const struct expr *expr)
 {
 	switch (expr->right->etype) {
 	case EXPR_SYMBOL:
+	case EXPR_RANGE_SYMBOL:
 	case EXPR_RANGE:
 	case EXPR_PREFIX:
 	case EXPR_SET:
@@ -630,6 +631,7 @@ static void __merge_concat(const struct optimize_ctx *ctx, uint32_t i,
 			case EXPR_SYMBOL:
 			case EXPR_VALUE:
 			case EXPR_PREFIX:
+			case EXPR_RANGE_SYMBOL:
 			case EXPR_RANGE:
 				clone = expr_clone(stmt_a->expr->right);
 				compound_expr_add(concat, clone);
@@ -730,6 +732,7 @@ static void build_verdict_map(struct expr *expr, struct stmt *verdict,
 		stmt_free(counter);
 		break;
 	case EXPR_PREFIX:
+	case EXPR_RANGE_SYMBOL:
 	case EXPR_RANGE:
 	case EXPR_VALUE:
 	case EXPR_SYMBOL:
