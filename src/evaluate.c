@@ -2327,45 +2327,44 @@ static int expr_evaluate_mapping(struct eval_ctx *ctx, struct expr **expr)
 
 static int expr_evaluate_symbol_range(struct eval_ctx *ctx, struct expr **exprp)
 {
-	struct expr *left, *right, *range;
+	struct expr *left, *right, *range, *constant_range;
 	struct expr *expr = *exprp;
 
-	left = symbol_expr_alloc(&expr->location, expr->symtype, (struct scope *)expr->scope, expr->identifier_range[0]);
-	if (expr_evaluate_symbol(ctx, &left) < 0) {
-		expr_free(left);
-		return -1;
-	}
+	/* expand to symbol and range expressions to consolidate evaluation. */
+	left = symbol_expr_alloc(&expr->location, expr->symtype,
+				 (struct scope *)expr->scope,
+				 expr->identifier_range[0]);
+	right = symbol_expr_alloc(&expr->location, expr->symtype,
+				  (struct scope *)expr->scope,
+				  expr->identifier_range[1]);
+	range = range_expr_alloc(&expr->location, left, right);
 
-	right = symbol_expr_alloc(&expr->location, expr->symtype, (struct scope *)expr->scope, expr->identifier_range[1]);
-	if (expr_evaluate_symbol(ctx, &right) < 0) {
-		expr_free(left);
-		expr_free(right);
+	if (expr_evaluate(ctx, &range) < 0) {
+		expr_free(range);
 		return -1;
 	}
+	left = range->left;
+	right = range->right;
 
 	/* concatenation and maps need more work to use constant_range_expr. */
 	if (ctx->set && !set_is_map(ctx->set->flags) &&
 	    set_is_non_concat_range(ctx->set) &&
 	    left->etype == EXPR_VALUE &&
 	    right->etype == EXPR_VALUE) {
-		range = constant_range_expr_alloc(&expr->location, left->dtype,
-						  left->byteorder,
-						  left->len,
-						  left->value,
-						  right->value);
-		expr_free(left);
-		expr_free(right);
+		constant_range = constant_range_expr_alloc(&expr->location,
+							   left->dtype,
+							   left->byteorder,
+							   left->len,
+							   left->value,
+							   right->value);
+		expr_free(range);
 		expr_free(expr);
-		*exprp = range;
+		*exprp = constant_range;
 		return 0;
 	}
 
-	range = range_expr_alloc(&expr->location, left, right);
 	expr_free(expr);
 	*exprp = range;
-
-	if (expr_evaluate(ctx, exprp) < 0)
-		return -1;
 
 	return 0;
 }
