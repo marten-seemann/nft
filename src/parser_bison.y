@@ -811,8 +811,8 @@ int nft_lex(void *, void *, void *);
 %type <val>			set_stmt_op
 %type <stmt>			map_stmt
 %destructor { stmt_free($$); }	map_stmt
-%type <stmt>			meter_stmt meter_stmt_alloc
-%destructor { stmt_free($$); }	meter_stmt meter_stmt_alloc
+%type <stmt>			meter_stmt
+%destructor { stmt_free($$); }	meter_stmt
 
 %type <expr>			symbol_expr verdict_expr integer_expr variable_expr chain_expr policy_expr
 %destructor { expr_free($$); }	symbol_expr verdict_expr integer_expr variable_expr chain_expr policy_expr
@@ -4192,10 +4192,7 @@ map_stmt		:	set_stmt_op	set_ref_expr '{' set_elem_expr_stmt	COLON	set_elem_expr_
 			}
 			;
 
-meter_stmt		:	meter_stmt_alloc		{ $$ = $1; }
-			;
-
-meter_stmt_alloc	:	METER	identifier		'{' meter_key_expr stmt '}'
+meter_stmt 		:	METER	identifier		'{' meter_key_expr stmt '}'
 			{
 				$$ = meter_stmt_alloc(&@$);
 				$$->meter.name = $2;
