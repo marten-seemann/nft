@@ -62,7 +62,8 @@ static void payload_expr_print(const struct expr *expr, struct output_ctx *octx)
 
 bool payload_expr_cmp(const struct expr *e1, const struct expr *e2)
 {
-	return e1->payload.desc   == e2->payload.desc &&
+	return e1->payload.inner_desc == e2->payload.inner_desc &&
+	       e1->payload.desc   == e2->payload.desc &&
 	       e1->payload.tmpl   == e2->payload.tmpl &&
 	       e1->payload.base   == e2->payload.base &&
 	       e1->payload.offset == e2->payload.offset;
