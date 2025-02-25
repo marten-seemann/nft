@@ -354,10 +354,10 @@ address types can be shown with *nft* *describe* *fib_addrtype*.
 |Keyword| Description| Result Type
 |oif|
 Output interface index|
-integer (32 bit)
+iface_index
 |oifname|
 Output interface name|
-string
+ifname
 |type|
 Address type |
 fib_addrtype (see *nft* *describe* *fib_addrtype* for a list)
