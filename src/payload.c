@@ -353,7 +353,6 @@ void payload_init_raw(struct expr *expr, enum proto_bases base,
 		expr->payload.tmpl = &proto_th.templates[thf];
 		expr->payload.desc = &proto_th;
 		expr->dtype = &inet_service_type;
-		expr->payload.desc = &proto_th;
 		break;
 	default:
 		break;
