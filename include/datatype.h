@@ -251,7 +251,6 @@ extern const struct datatype verdict_type;
 extern const struct datatype nfproto_type;
 extern const struct datatype bitmask_type;
 extern const struct datatype integer_type;
-extern const struct datatype xinteger_type;
 extern const struct datatype string_type;
 extern const struct datatype lladdr_type;
 extern const struct datatype ipaddr_type;
@@ -278,6 +277,10 @@ extern const struct datatype queue_type;
 extern const struct datatype reject_icmp_code_type;
 extern const struct datatype reject_icmpv6_code_type;
 extern const struct datatype reject_icmpx_code_type;
+
+/* TYPE_INTEGER aliases: */
+extern const struct datatype xinteger_type;
+extern const struct datatype mptcpopt_subtype;
 
 void inet_service_type_print(const struct expr *expr, struct output_ctx *octx);
 

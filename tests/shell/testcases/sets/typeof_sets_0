@@ -119,6 +119,11 @@ INPUT="table inet t {$INPUT_OSF_SET
 		typeof meta iifname . ip saddr . meta ipsec
 		elements = { \"eth0\" . 10.1.1.2 . 1 }
 	}
+
+	set s13 {
+		typeof tcp option mptcp subtype
+		elements = { mp-join, dss }
+	}
 $INPUT_OSF_CHAIN
 	chain c2 {
 		ether type vlan vlan id @s2 accept
@@ -147,6 +152,10 @@ $INPUT_VERSION_CHAIN
 
 	chain c12 {
 		meta iifname . ip saddr . meta ipsec @s12 accept
+	}
+
+	chain c13 {
+		tcp option mptcp subtype @s13 accept
 	}
 }"
 
@@ -196,6 +205,11 @@ $INPUT_VERSION_SET
 		typeof iifname . ip saddr . meta ipsec
 		elements = { \"eth0\" . 10.1.1.2 . exists }
 	}
+
+	set s13 {
+		typeof tcp option mptcp subtype
+		elements = { mp-join, dss }
+	}
 $INPUT_OSF_CHAIN
 	chain c2 {
 		vlan id @s2 accept
@@ -223,6 +237,10 @@ $INPUT_SCTP_CHAIN$INPUT_VERSION_CHAIN
 
 	chain c12 {
 		iifname . ip saddr . meta ipsec @s12 accept
+	}
+
+	chain c13 {
+		tcp option mptcp subtype @s13 accept
 	}
 }"
 

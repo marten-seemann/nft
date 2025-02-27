@@ -533,7 +533,7 @@
     }
 ]
 
-# tcp option mptcp subtype 0
+# tcp option mptcp subtype mp-capable
 [
     {
         "match": {
@@ -544,7 +544,7 @@
                 }
             },
             "op": "==",
-            "right": 0
+            "right": "mp-capable"
         }
     }
 ]
@@ -560,7 +560,7 @@
                 }
             },
             "op": "==",
-            "right": 1
+            "right": "mp-join"
         }
     }
 ]

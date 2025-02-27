@@ -60,6 +60,11 @@ table inet t {
 		elements = { "eth0" . 10.1.1.2 . exists }
 	}
 
+	set s13 {
+		typeof tcp option mptcp subtype
+		elements = { mp-join, dss }
+	}
+
 	chain c1 {
 		osf name @s1 accept
 	}
@@ -102,5 +107,9 @@ table inet t {
 
 	chain c12 {
 		iifname . ip saddr . meta ipsec @s12 accept
+	}
+
+	chain c13 {
+		tcp option mptcp subtype @s13 accept
 	}
 }
