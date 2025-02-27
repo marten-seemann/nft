@@ -2102,6 +2102,7 @@ static void payload_match_expand(struct rule_pp_ctx *ctx,
 		 */
 		payload_dependency_kill(&dl->pdctx, nexpr->left,
 					dl->pctx.family);
+		expr_set_type(tmp, nexpr->left->dtype, nexpr->byteorder);
 		if (expr->op == OP_EQ && left->flags & EXPR_F_PROTOCOL)
 			payload_dependency_store(&dl->pdctx, nstmt, base);
 	}

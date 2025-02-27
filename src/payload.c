@@ -812,7 +812,7 @@ static bool icmp_dep_type_match(enum icmp_hdr_field_type t, uint8_t type)
 	BUG("Missing icmp type mapping");
 }
 
-static bool payload_may_dependency_kill_icmp(struct payload_dep_ctx *ctx, struct expr *expr)
+static bool payload_may_dependency_kill_icmp(struct payload_dep_ctx *ctx, const struct expr *expr)
 {
 	const struct expr *dep = payload_dependency_get(ctx, expr->payload.base);
 	enum icmp_hdr_field_type icmp_dep;
@@ -832,7 +832,7 @@ static bool payload_may_dependency_kill_icmp(struct payload_dep_ctx *ctx, struct
 	return ctx->icmp_type == icmp_dep_to_type(icmp_dep);
 }
 
-static bool payload_may_dependency_kill_ll(struct payload_dep_ctx *ctx, struct expr *expr)
+static bool payload_may_dependency_kill_ll(struct payload_dep_ctx *ctx, const struct expr *expr)
 {
 	const struct expr *dep = payload_dependency_get(ctx, expr->payload.base);
 
@@ -893,6 +893,18 @@ static bool payload_may_dependency_kill(struct payload_dep_ctx *ctx,
 
 	if (expr->payload.base != PROTO_BASE_TRANSPORT_HDR)
 		return true;
+
+	if (expr->payload.desc == &proto_th) {
+		/* &proto_th could mean any of udp, tcp, dccp, ... so we
+		 * cannot remove the dependency.
+		 *
+		 * Also prefer raw payload @th syntax, there is no
+		 * 'source/destination port' protocol here.
+		 */
+		expr->payload.desc = &proto_unknown;
+		expr->dtype = &xinteger_type;
+		return false;
+	}
 
 	if (dep->left->etype != EXPR_PAYLOAD ||
 	    dep->left->payload.base != PROTO_BASE_TRANSPORT_HDR)
