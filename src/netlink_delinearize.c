@@ -2655,8 +2655,16 @@ static bool payload_binop_postprocess(struct rule_pp_ctx *ctx,
 	if (expr->left->etype != EXPR_BINOP || expr->left->op != OP_AND)
 		return false;
 
-	if (expr->left->left->etype != EXPR_PAYLOAD)
+	switch (expr->left->left->etype) {
+	case EXPR_EXTHDR:
+		break;
+	case EXPR_PAYLOAD:
+		break;
+	default:
 		return false;
+	}
+
+	expr_postprocess(ctx, &expr->left->left);
 
 	expr_set_type(expr->right, &integer_type,
 		      BYTEORDER_HOST_ENDIAN);

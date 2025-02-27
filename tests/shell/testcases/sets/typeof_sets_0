@@ -124,6 +124,11 @@ INPUT="table inet t {$INPUT_OSF_SET
 		typeof tcp option mptcp subtype
 		elements = { mp-join, dss }
 	}
+
+	set s14 {
+		typeof tcp option mptcp subtype . ip daddr
+		elements = { remove-addr . 10.1.1.1, mp-join . 10.1.1.2 }
+	}
 $INPUT_OSF_CHAIN
 	chain c2 {
 		ether type vlan vlan id @s2 accept
@@ -156,6 +161,10 @@ $INPUT_VERSION_CHAIN
 
 	chain c13 {
 		tcp option mptcp subtype @s13 accept
+	}
+
+	chain c14 {
+		tcp option mptcp subtype . ip saddr @s14 accept
 	}
 }"
 
@@ -210,6 +219,12 @@ $INPUT_VERSION_SET
 		typeof tcp option mptcp subtype
 		elements = { mp-join, dss }
 	}
+
+	set s14 {
+		typeof tcp option mptcp subtype . ip daddr
+		elements = { remove-addr . 10.1.1.1,
+			     mp-join . 10.1.1.2 }
+	}
 $INPUT_OSF_CHAIN
 	chain c2 {
 		vlan id @s2 accept
@@ -241,6 +256,10 @@ $INPUT_SCTP_CHAIN$INPUT_VERSION_CHAIN
 
 	chain c13 {
 		tcp option mptcp subtype @s13 accept
+	}
+
+	chain c14 {
+		tcp option mptcp subtype . ip saddr @s14 accept
 	}
 }"
 
