@@ -1485,6 +1485,32 @@ static void set_ref_expr_destroy(struct expr *expr)
 	set_free(expr->set);
 }
 
+static void set_ref_expr_set_type(const struct expr *expr,
+				  const struct datatype *dtype,
+				  enum byteorder byteorder)
+{
+	const struct set *s = expr->set;
+
+	/* normal sets already have a precise datatype that is given in
+	 * the set definition via type foo.
+	 *
+	 * Anon sets do not have this, and need to rely on type info
+	 * generated at rule creation time.
+	 *
+	 * For most cases, the type info is correct.
+	 * In some cases however, the kernel only stores TYPE_INTEGER.
+	 *
+	 * This happens with expressions that only use an integer alias
+	 * type, e.g. the mptcpopt_subtype datatype.
+	 *
+	 * In this case nft will print the elements as numerical values
+	 * because the base type lacks the ->sym_tbl information of the
+	 * subtypes.
+	 */
+	if (s->init && set_is_anonymous(s->flags))
+		expr_set_type(s->init, dtype, byteorder);
+}
+
 static const struct expr_ops set_ref_expr_ops = {
 	.type		= EXPR_SET_REF,
 	.name		= "set reference",
@@ -1492,6 +1518,7 @@ static const struct expr_ops set_ref_expr_ops = {
 	.json		= set_ref_expr_json,
 	.clone		= set_ref_expr_clone,
 	.destroy	= set_ref_expr_destroy,
+	.set_type	= set_ref_expr_set_type,
 };
 
 struct expr *set_ref_expr_alloc(const struct location *loc, struct set *set)
@@ -1556,6 +1583,13 @@ static void set_elem_expr_clone(struct expr *new, const struct expr *expr)
 	__set_elem_expr_clone(new, expr);
 }
 
+static void set_elem_expr_set_type(const struct expr *expr,
+				   const struct datatype *dtype,
+				   enum byteorder byteorder)
+{
+       expr_set_type(expr->key, dtype, byteorder);
+}
+
 static const struct expr_ops set_elem_expr_ops = {
 	.type		= EXPR_SET_ELEM,
 	.name		= "set element",
@@ -1563,6 +1597,7 @@ static const struct expr_ops set_elem_expr_ops = {
 	.print		= set_elem_expr_print,
 	.json		= set_elem_expr_json,
 	.destroy	= set_elem_expr_destroy,
+	.set_type	= set_elem_expr_set_type,
 };
 
 struct expr *set_elem_expr_alloc(const struct location *loc, struct expr *key)

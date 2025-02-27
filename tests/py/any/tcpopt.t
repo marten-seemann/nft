@@ -53,7 +53,7 @@ tcp option mptcp exists;ok
 
 tcp option mptcp subtype mp-capable;ok
 tcp option mptcp subtype 1;ok;tcp option mptcp subtype mp-join
-tcp option mptcp subtype { 0, 2};ok
+tcp option mptcp subtype { mp-capable, mp-join, remove-addr, mp-prio, mp-fail, mp-fastclose, mp-tcprst };ok
 
 reset tcp option mptcp;ok
 reset tcp option 2;ok;reset tcp option maxseg

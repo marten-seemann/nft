@@ -565,7 +565,7 @@
     }
 ]
 
-# tcp option mptcp subtype { 0, 2}
+# tcp option mptcp subtype { mp-capable, mp-join, remove-addr, mp-prio, mp-fail, mp-fastclose, mp-tcprst }
 [
     {
         "match": {
@@ -578,8 +578,13 @@
             "op": "==",
             "right": {
                 "set": [
-                    0,
-                    2
+                    "mp-capable",
+                    "mp-join",
+                    "remove-addr",
+                    "mp-prio",
+                    "mp-fail",
+                    "mp-fastclose",
+                    "mp-tcprst"
                 ]
             }
         }
