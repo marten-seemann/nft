@@ -569,6 +569,13 @@ static int expr_evaluate_bits(struct eval_ctx *ctx, struct expr **exprp)
 	uint8_t shift;
 	mpz_t bitmask;
 
+	/* payload statement with relational expression as a value does not
+	 * require the transformations that are needed for payload matching,
+	 * skip this.
+	 */
+	if (ctx->stmt && ctx->stmt->ops->type == STMT_PAYLOAD)
+		return 0;
+
 	switch (expr->etype) {
 	case EXPR_PAYLOAD:
 		shift = expr_offset_shift(expr, expr->payload.offset,
@@ -3281,10 +3288,10 @@ static int stmt_evaluate_exthdr(struct eval_ctx *ctx, struct stmt *stmt)
 
 static int stmt_evaluate_payload(struct eval_ctx *ctx, struct stmt *stmt)
 {
-	struct expr *mask, *and, *xor, *payload_bytes;
-	unsigned int masklen, extra_len = 0;
+	struct expr *mask, *and, *xor, *expr, *payload_bytes;
 	unsigned int payload_byte_size, payload_byte_offset;
 	uint8_t shift_imm, data[NFT_REG_SIZE];
+	unsigned int masklen, extra_len = 0;
 	struct expr *payload;
 	mpz_t bitmask, ff;
 	bool need_csum;
@@ -3350,6 +3357,60 @@ static int stmt_evaluate_payload(struct eval_ctx *ctx, struct stmt *stmt)
 		if (shift_imm)
 			mpz_lshift_ui(stmt->payload.val->value, shift_imm);
 		break;
+	case EXPR_BINOP:
+		expr = stmt->payload.val;
+		while (expr->left->etype == EXPR_BINOP)
+			expr = expr->left;
+
+		if (expr->left->etype != EXPR_PAYLOAD)
+			break;
+
+		if (!payload_expr_cmp(payload, expr->left))
+			break;
+
+		/* Adjust payload to fetch 16-bits. */
+		expr->left->payload.offset = payload_byte_offset * BITS_PER_BYTE;
+		expr->left->len = payload_byte_size * BITS_PER_BYTE;
+		expr->left->payload.is_raw = 1;
+
+		switch (expr->right->etype) {
+		case EXPR_VALUE:
+			if (shift_imm)
+				mpz_lshift_ui(expr->right->value, shift_imm);
+
+			/* build bitmask to keep unmodified bits intact */
+			if (expr->op == OP_AND) {
+				masklen = payload_byte_size * BITS_PER_BYTE;
+				mpz_init_bitmask(ff, masklen);
+
+				mpz_init2(bitmask, masklen);
+				mpz_bitmask(bitmask, payload->len);
+				mpz_lshift_ui(bitmask, shift_imm);
+
+				mpz_xor(bitmask, ff, bitmask);
+				mpz_clear(ff);
+
+				mpz_ior(bitmask, expr->right->value, bitmask);
+				mpz_set(expr->right->value, bitmask);
+
+				mpz_clear(bitmask);
+			}
+			break;
+		default:
+			return expr_error(ctx->msgs, expr->right,
+					  "payload statement for this expression is not supported");
+		}
+
+		expr_free(stmt->payload.expr);
+		/* statement payload is the same in expr and value, update it. */
+		stmt->payload.expr = expr_clone(expr->left);
+		payload = stmt->payload.expr;
+		ctx->stmt_len = stmt->payload.expr->len;
+
+		if (expr_evaluate(ctx, &stmt->payload.val) < 0)
+			return -1;
+
+		return 0;
 	default:
 		return expr_error(ctx->msgs, stmt->payload.val,
 				  "payload statement for this expression is not supported");
