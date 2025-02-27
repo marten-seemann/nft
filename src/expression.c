@@ -1078,7 +1078,7 @@ static struct expr *expr_build_udata_recurse(struct expr *e)
 {
 	switch (e->etype) {
 	case EXPR_BINOP:
-		return e->left;
+		return expr_build_udata_recurse(e->left);
 	default:
 		break;
 	}

@@ -54,6 +54,7 @@ tcp option mptcp exists;ok
 tcp option mptcp subtype mp-capable;ok
 tcp option mptcp subtype 1;ok;tcp option mptcp subtype mp-join
 tcp option mptcp subtype { mp-capable, mp-join, remove-addr, mp-prio, mp-fail, mp-fastclose, mp-tcprst };ok
+tcp option mptcp subtype . tcp dport { mp-capable . 10, mp-join . 100, add-addr . 200, remove-addr . 300, mp-prio . 400, mp-fail . 500, mp-fastclose . 600, mp-tcprst . 700 };ok
 
 reset tcp option mptcp;ok
 reset tcp option 2;ok;reset tcp option maxseg
