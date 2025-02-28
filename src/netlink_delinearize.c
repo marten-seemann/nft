@@ -3184,7 +3184,8 @@ static void stmt_payload_binop_pp(struct rule_pp_ctx *ctx, struct expr *binop)
  * decoding changed '(payload & mask) ^ bits_to_set' into
  * 'payload | bits_to_set', discarding the redundant "& 0xfff...".
  */
-static void stmt_payload_binop_postprocess(struct rule_pp_ctx *ctx)
+static void stmt_payload_binop_postprocess(struct rule_pp_ctx *ctx,
+					   const struct proto_ctx *pctx)
 {
 	struct expr *expr, *binop, *payload, *value, *mask;
 	struct stmt *stmt = ctx->stmt;
@@ -3265,6 +3266,9 @@ static void stmt_payload_binop_postprocess(struct rule_pp_ctx *ctx)
 			unsigned int shift_unused;
 			mpz_t tmp;
 
+			if (stmt_payload_expr_trim(stmt, pctx))
+				return;
+
 			mpz_init(tmp);
 			mpz_set(tmp, mask->value);
 
@@ -3294,9 +3298,16 @@ static void stmt_payload_binop_postprocess(struct rule_pp_ctx *ctx)
 		}
 		case OP_OR:  /* IIb */
 			stmt_payload_binop_pp(ctx, expr);
+			if (stmt_payload_expr_trim(stmt, pctx))
+				return;
 			if (!payload_is_known(expr->left))
 				return;
 			break;
+		case OP_XOR:
+			if (stmt_payload_expr_trim(stmt, pctx))
+				return;
+
+			return;
 		default: /* No idea what to do */
 			return;
 		}
@@ -3318,7 +3329,7 @@ static void stmt_payload_postprocess(struct rule_pp_ctx *ctx)
 
 	payload_expr_complete(stmt->payload.expr, &dl->pctx);
 	if (!payload_is_known(stmt->payload.expr))
-		stmt_payload_binop_postprocess(ctx);
+		stmt_payload_binop_postprocess(ctx, &dl->pctx);
 
 	expr_postprocess(ctx, &stmt->payload.expr);
 

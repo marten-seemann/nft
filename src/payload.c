@@ -1174,6 +1174,177 @@ bool payload_expr_trim_force(struct expr *expr, struct expr *mask, unsigned int 
 }
 
 /**
+ * stmt_payload_expr_trim - adjust payload len/offset according to mask
+ *
+ * @stmt:	the payload statement
+ * @pctx:	protocol context
+ *
+ * Infer offset to header field from mask, walk the template list to determine
+ * if offset falls within a matching header field.
+ *
+ * Trim the payload expression length accordingly, adjust the payload offset
+ * and return true if payload statement expressions has been updated.
+ *
+ * @return: true if @stmt was adjusted.
+ */
+bool stmt_payload_expr_trim(struct stmt *stmt, const struct proto_ctx *pctx)
+{
+	struct expr *expr = stmt->payload.val;
+	const struct proto_hdr_template *tmpl;
+	const struct proto_desc *desc;
+	struct expr *payload, *mask;
+	uint32_t offset, i, shift;
+	unsigned int mask_offset;
+	mpz_t bitmask, tmp, tmp2;
+	unsigned long n;
+
+	assert(stmt->ops->type == STMT_PAYLOAD);
+	assert(expr->etype == EXPR_BINOP);
+
+	payload = expr->left;
+	mask = expr->right;
+
+	if (payload->etype != EXPR_PAYLOAD ||
+	    mask->etype != EXPR_VALUE)
+		return false;
+
+	if (payload_is_known(payload) ||
+	    !pctx->protocol[payload->payload.base].desc ||
+	    payload->len % (2 * BITS_PER_BYTE) != 0)
+		return false;
+
+	switch (expr->op) {
+	case OP_AND:
+		/* infer offset from first 0 in mask */
+		n = mpz_scan0(mask->value, 0);
+		if (n == ULONG_MAX)
+			return false;
+
+		mask_offset = payload->len - n;
+		break;
+	case OP_OR:
+	case OP_XOR:
+		/* infer offset from first 1 in mask */
+		n = mpz_scan1(mask->value, 0);
+		if (n == ULONG_MAX)
+			return false;
+
+		mask_offset = payload->len - n;
+		break;
+	default:
+		return false;
+	}
+
+	offset = payload->payload.offset + mask_offset;
+
+	desc = pctx->protocol[payload->payload.base].desc;
+	for (i = 1; i < array_size(desc->templates); i++) {
+		tmpl = &desc->templates[i];
+
+		if (tmpl->len == 0)
+			return false;
+
+		/* Is this inferred offset within this header field? */
+		if (tmpl->offset + tmpl->len >= offset) {
+			/* Infer shift to reach this header field. */
+			if ((tmpl->offset % (2 * BITS_PER_BYTE)) < 8) {
+				shift = BITS_PER_BYTE - (tmpl->offset % BITS_PER_BYTE + tmpl->len);
+				shift += BITS_PER_BYTE;
+			} else {
+				shift = (2 * BITS_PER_BYTE) - (tmpl->offset % (2 * BITS_PER_BYTE) + tmpl->len);
+			}
+
+			/* Build bitmask to fetch this header field. */
+			mpz_init2(bitmask, payload->len);
+			mpz_bitmask(bitmask, tmpl->len);
+			if (shift)
+				mpz_lshift_ui(bitmask, shift);
+
+			/* Check if mask expression falls within this header
+			 * bitfield, if the mask expression is over this header
+			 * field, then skip this delinearization, this could be
+			 * a raw expression.
+			 */
+			switch (expr->op) {
+			case OP_AND:
+				/* Inverted bitmask to fetch untouched bits. */
+				mpz_init_bitmask(tmp, payload->len);
+				mpz_xor(tmp, bitmask, tmp);
+
+				/* Get untouched bits out of the header field. */
+				mpz_init2(tmp2, payload->len);
+				mpz_and(tmp2, mask->value, tmp);
+
+				/* Modified any bits out of the header field? */
+				if (mpz_cmp(tmp, tmp2) != 0) {
+					mpz_clear(tmp);
+					mpz_clear(tmp2);
+					mpz_clear(bitmask);
+					return false;
+				}
+				mpz_clear(tmp2);
+				break;
+			case OP_OR:
+			case OP_XOR:
+				mpz_init2(tmp, payload->len);
+
+				/* Get modified bits in header field. */
+				mpz_and(tmp, mask->value, bitmask);
+
+				/* Modified any bits out of the header field? */
+				if (mpz_cmp(tmp, mask->value) != 0) {
+					mpz_clear(tmp);
+					mpz_clear(bitmask);
+					return false;
+				}
+				break;
+			default:
+				assert(0);
+				break;
+			}
+			mpz_clear(tmp);
+
+			/* Clear unrelated bits for this header field. Shrink
+			 * to "real size". Shift bits when needed.
+			 */
+			mpz_and(mask->value, bitmask, mask->value);
+			mpz_clear(bitmask);
+
+			mask->len -= (tmpl->offset - payload->payload.offset);
+			if (shift) {
+				mask->len -= shift;
+				mpz_rshift_ui(mask->value, shift);
+			}
+			payload->payload.offset = tmpl->offset;
+			payload->len = tmpl->len;
+
+			expr_free(stmt->payload.expr);
+			stmt->payload.expr = expr_get(payload);
+
+			if (expr->op == OP_AND) {
+				/* Reduce 'expr AND 0x0', otherwise listing
+				 * shows:
+				 *
+				 *	ip dscp set ip dscp & 0x0
+				 *
+				 * instead of the more compact:
+				 *
+				 *	ip dscp set 0x0
+				 */
+				if (mpz_cmp_ui(mask->value, 0) == 0) {
+					expr = stmt->payload.val;
+					stmt->payload.val = expr_get(mask);
+					expr_free(expr);
+				}
+			}
+			return true;
+		}
+	}
+
+	return false;
+}
+
+/**
  * payload_expr_expand - expand raw merged adjacent payload expressions into its
  * 			 original components
  *
