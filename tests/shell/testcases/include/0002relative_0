@@ -7,9 +7,14 @@ if [ ! -w "$tmpfile1" ] ; then
 	exit 77
 fi
 
-trap "rm -rf $tmpfile1 $tmpfile2" EXIT # cleanup if aborted
-set -e
+cleanup()
+{
+	rm -f "$tmpfile1" "$tmpfile2"
+}
 
+trap cleanup EXIT
+
+set -e
 tmpfile2=$(mktemp -p .)
 
 RULESET1="add table x"
