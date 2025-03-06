@@ -206,6 +206,27 @@ static struct expr *expr_to_set_elem(struct expr *e)
 	return __expr_to_set_elem(e, expr);
 }
 
+static void set_compound_expr_add(struct expr *compound, struct expr *expr, struct expr *orig)
+{
+	struct expr *elem;
+
+	switch (expr->etype) {
+	case EXPR_SET_ELEM:
+		list_splice_init(&orig->stmt_list, &expr->stmt_list);
+		compound_expr_add(compound, expr);
+		break;
+	case EXPR_MAPPING:
+		list_splice_init(&orig->left->stmt_list, &expr->left->stmt_list);
+		compound_expr_add(compound, expr);
+		break;
+	default:
+		elem = set_elem_expr_alloc(&orig->location, expr);
+		list_splice_init(&orig->stmt_list, &elem->stmt_list);
+		compound_expr_add(compound, elem);
+		break;
+	}
+}
+
 int get_set_decompose(struct set *cache_set, struct set *set)
 {
 	struct expr *i, *next, *range;
@@ -227,20 +248,23 @@ int get_set_decompose(struct set *cache_set, struct set *set)
 				errno = ENOENT;
 				return -1;
 			}
+
+			set_compound_expr_add(new_init, range, left);
+
 			expr_free(left);
 			expr_free(i);
 
-			compound_expr_add(new_init, range);
 			left = NULL;
 		} else {
 			if (left) {
 				range = get_set_interval_find(cache_set,
 							      left, NULL);
+
 				if (range)
-					compound_expr_add(new_init, range);
+					set_compound_expr_add(new_init, range, left);
 				else
-					compound_expr_add(new_init,
-							  expr_to_set_elem(left));
+					set_compound_expr_add(new_init,
+							      expr_to_set_elem(left), left);
 			}
 			left = i;
 		}
@@ -248,9 +272,9 @@ int get_set_decompose(struct set *cache_set, struct set *set)
 	if (left) {
 		range = get_set_interval_find(cache_set, left, NULL);
 		if (range)
-			compound_expr_add(new_init, range);
+			set_compound_expr_add(new_init, range, left);
 		else
-			compound_expr_add(new_init, expr_to_set_elem(left));
+			set_compound_expr_add(new_init, expr_to_set_elem(left), left);
 	}
 
 	expr_free(set->init);

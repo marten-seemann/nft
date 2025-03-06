@@ -1953,6 +1953,7 @@ static int interval_set_eval(struct eval_ctx *ctx, struct set *set,
 				 ctx->nft->debug_mask);
 		break;
 	case CMD_GET:
+	case CMD_RESET:
 		break;
 	default:
 		BUG("unhandled op %d\n", ctx->cmd->op);
