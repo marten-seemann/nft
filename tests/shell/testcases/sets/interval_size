@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# NFT_TEST_REQUIRES(NFT_TEST_HAVE_rbtree_size_limit)
+
 RULESET="table inet x {
 	set x {
 		typeof ip saddr
