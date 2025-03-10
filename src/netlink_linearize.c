@@ -778,6 +778,7 @@ static void netlink_gen_bitwise_bool(struct netlink_linearize_ctx *ctx,
 	sreg2 = get_register(ctx, expr->right);
 	netlink_gen_expr(ctx, expr->right, sreg2);
 	netlink_put_register(nle, NFTNL_EXPR_BITWISE_SREG2, sreg2);
+	release_register(ctx, expr->right);
 
 	len = div_round_up(expr->len, BITS_PER_BYTE);
 	nftnl_expr_set_u32(nle, NFTNL_EXPR_BITWISE_LEN, len);

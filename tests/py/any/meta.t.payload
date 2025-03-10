@@ -1090,3 +1090,12 @@ ip test-ip4 input
   [ bitwise reg 1 = ( reg 1 & 0x0000ff0f ) ^ 0x00000000 ]
   [ lookup reg 1 set map1 dreg 1 ]
   [ meta set mark with reg 1 ]
+
+# meta mark set meta mark | iif | meta cpu
+ip test-ip4 input
+  [ meta load mark => reg 1 ]
+  [ meta load iif => reg 2 ]
+  [ bitwise reg 1 = ( reg 1 | reg 2 ) ]
+  [ meta load cpu => reg 2 ]
+  [ bitwise reg 1 = ( reg 1 | reg 2 ) ]
+  [ meta set mark with reg 1 ]
