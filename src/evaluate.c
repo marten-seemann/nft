@@ -2351,6 +2351,10 @@ static int expr_evaluate_symbol_range(struct eval_ctx *ctx, struct expr **exprp)
 		expr_free(range);
 		return -1;
 	}
+
+	if (range->etype != EXPR_RANGE)
+		goto out_done;
+
 	left = range->left;
 	right = range->right;
 
@@ -2371,6 +2375,7 @@ static int expr_evaluate_symbol_range(struct eval_ctx *ctx, struct expr **exprp)
 		return 0;
 	}
 
+out_done:
 	expr_free(expr);
 	*exprp = range;
 
