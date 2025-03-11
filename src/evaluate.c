@@ -123,16 +123,16 @@ static struct expr *implicit_set_declaration(struct eval_ctx *ctx,
 	struct set *set;
 	struct handle h;
 
-	if (set_is_datamap(expr->set_flags))
+	if (set_is_datamap(flags))
 		key_fix_dtype_byteorder(key);
 
 	set = set_alloc(&expr->location);
-	set->flags	= expr->set_flags | flags;
+	set->flags	= flags;
 	set->handle.set.name = xstrdup(name);
 	set->key	= key;
 	set->data	= data;
 	set->init	= expr;
-	set->automerge	= set->flags & NFT_SET_INTERVAL;
+	set->automerge	= flags & NFT_SET_INTERVAL;
 
 	handle_merge(&set->handle, &ctx->cmd->handle);
 
@@ -2117,6 +2117,7 @@ static int expr_evaluate_map(struct eval_ctx *ctx, struct expr **expr)
 {
 	struct expr *map = *expr, *mappings;
 	struct expr_ctx ectx = ctx->ectx;
+	uint32_t set_flags = NFT_SET_MAP;
 	struct expr *key, *data;
 
 	if (map->map->etype == EXPR_CT &&
@@ -2145,11 +2146,14 @@ static int expr_evaluate_map(struct eval_ctx *ctx, struct expr **expr)
 
 	ctx->stmt_len = 0;
 	mappings = map->mappings;
-	mappings->set_flags |= NFT_SET_MAP;
 
 	switch (map->mappings->etype) {
-	case EXPR_VARIABLE:
+	case EXPR_CONCAT:
+	case EXPR_LIST:
 	case EXPR_SET:
+		set_flags |= mappings->set_flags;
+		/* fallthrough */
+	case EXPR_VARIABLE:
 		if (ctx->ectx.key && ctx->ectx.key->etype == EXPR_CONCAT) {
 			key = expr_clone(ctx->ectx.key);
 		} else {
@@ -2179,7 +2183,7 @@ static int expr_evaluate_map(struct eval_ctx *ctx, struct expr **expr)
 		mappings = implicit_set_declaration(ctx, "__map%d",
 						    key, data,
 						    mappings,
-						    NFT_SET_ANONYMOUS);
+						    NFT_SET_ANONYMOUS | set_flags);
 		if (!mappings)
 			return -1;
 
@@ -2807,7 +2811,7 @@ static int expr_evaluate_relational(struct eval_ctx *ctx, struct expr **expr)
 				implicit_set_declaration(ctx, "__set%d",
 							 expr_get(left), NULL,
 							 right,
-							 NFT_SET_ANONYMOUS);
+							 right->set_flags | NFT_SET_ANONYMOUS);
 			if (!right)
 				return -1;
 
@@ -3529,7 +3533,8 @@ static int stmt_evaluate_meter(struct eval_ctx *ctx, struct stmt *stmt)
 
 		set->set_flags |= NFT_SET_EVAL;
 		setref = implicit_set_declaration(ctx, stmt->meter.name,
-						  expr_get(key), NULL, set, 0);
+						  expr_get(key), NULL, set,
+						  NFT_SET_EVAL | set->set_flags);
 		if (setref)
 			setref->set->desc.size = stmt->meter.size;
 	}
@@ -4742,6 +4747,7 @@ static int stmt_evaluate_map(struct eval_ctx *ctx, struct stmt *stmt)
 static int stmt_evaluate_objref_map(struct eval_ctx *ctx, struct stmt *stmt)
 {
 	struct expr *map = stmt->objref.expr;
+	uint32_t set_flags = NFT_SET_OBJECT;
 	struct expr *mappings;
 	struct expr *key;
 
@@ -4753,11 +4759,12 @@ static int stmt_evaluate_objref_map(struct eval_ctx *ctx, struct stmt *stmt)
 				  "Map expression can not be constant");
 
 	mappings = map->mappings;
-	mappings->set_flags |= NFT_SET_OBJECT;
 
 	switch (map->mappings->etype) {
-	case EXPR_VARIABLE:
 	case EXPR_SET:
+		set_flags |= mappings->set_flags;
+		/* fallthrough */
+	case EXPR_VARIABLE:
 		key = constant_expr_alloc(&stmt->location,
 					  ctx->ectx.dtype,
 					  ctx->ectx.byteorder,
@@ -4765,7 +4772,7 @@ static int stmt_evaluate_objref_map(struct eval_ctx *ctx, struct stmt *stmt)
 
 		mappings = implicit_set_declaration(ctx, "__objmap%d",
 						    key, NULL, mappings,
-						    NFT_SET_ANONYMOUS);
+						    set_flags | NFT_SET_ANONYMOUS);
 		if (!mappings)
 			return -1;
 		mappings->set->objtype  = stmt->objref.type;
