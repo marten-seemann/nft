@@ -420,7 +420,16 @@ static void do_set_print(const struct set *set, struct print_fmt_options *opts,
 
 	if (set->init != NULL && set->init->size > 0) {
 		nft_print(octx, "%s%selements = ", opts->tab, opts->tab);
+
+		if (set->timeout || set->elem_has_comment ||
+		    (set->flags & (NFT_SET_MAP | NFT_SET_OBJECT |
+				   NFT_SET_TIMEOUT | NFT_SET_CONCAT)) ||
+		    !list_empty(&set->stmt_list))
+			octx->force_newline = true;
+
 		expr_print(set->init, octx);
+		octx->force_newline = false;
+
 		nft_print(octx, "%s", opts->nl);
 	}
 	nft_print(octx, "%s}%s", opts->tab, opts->nl);

@@ -1435,8 +1435,11 @@ key_end:
 
 	if (nftnl_set_elem_is_set(nlse, NFTNL_SET_ELEM_EXPIRATION))
 		expr->expiration = nftnl_set_elem_get_u64(nlse, NFTNL_SET_ELEM_EXPIRATION);
-	if (nftnl_set_elem_is_set(nlse, NFTNL_SET_ELEM_USERDATA))
+	if (nftnl_set_elem_is_set(nlse, NFTNL_SET_ELEM_USERDATA)) {
 		set_elem_parse_udata(nlse, expr);
+		if (expr->comment)
+			set->elem_has_comment = true;
+	}
 	if (nftnl_set_elem_is_set(nlse, NFTNL_SET_ELEM_EXPR)) {
 		const struct nftnl_expr *nle;
 		struct stmt *stmt;

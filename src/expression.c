@@ -1252,10 +1252,14 @@ struct expr *list_expr_alloc(const struct location *loc)
 	return compound_expr_alloc(loc, EXPR_LIST);
 }
 
-static const char *calculate_delim(const struct expr *expr, int *count)
+static const char *calculate_delim(const struct expr *expr, int *count,
+				   struct output_ctx *octx)
 {
 	const char *newline = ",\n\t\t\t     ";
 	const char *singleline = ", ";
+
+	if (octx->force_newline)
+		return newline;
 
 	if (set_is_anonymous(expr->set_flags))
 		return singleline;
@@ -1309,7 +1313,7 @@ static void set_expr_print(const struct expr *expr, struct output_ctx *octx)
 		nft_print(octx, "%s", d);
 		expr_print(i, octx);
 		count++;
-		d = calculate_delim(expr, &count);
+		d = calculate_delim(expr, &count, octx);
 	}
 
 	nft_print(octx, " }");
