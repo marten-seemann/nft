@@ -3121,7 +3121,7 @@ static void stmt_expr_postprocess(struct rule_pp_ctx *ctx)
 	expr_postprocess(ctx, &ctx->stmt->expr);
 
 	if (dl->pdctx.prev && ctx->stmt &&
-	    ctx->stmt->ops->type == dl->pdctx.prev->ops->type &&
+	    ctx->stmt->type == dl->pdctx.prev->type &&
 	    expr_may_merge_range(ctx->stmt->expr, dl->pdctx.prev->expr, &op))
 		expr_postprocess_range(ctx, op);
 }
@@ -3404,7 +3404,7 @@ static struct dl_proto_ctx *rule_update_dl_proto_ctx(struct rule_pp_ctx *rctx)
 	const struct stmt *stmt = rctx->stmt;
 	bool inner = false;
 
-	switch (stmt->ops->type) {
+	switch (stmt->type) {
 	case STMT_EXPRESSION:
 		if (has_inner_desc(stmt->expr->left))
 			inner = true;
@@ -3438,7 +3438,7 @@ static void rule_parse_postprocess(struct netlink_parse_ctx *ctx, struct rule *r
 	proto_ctx_init(&rctx._dl[1].pctx, NFPROTO_BRIDGE, ctx->debug_mask, true);
 
 	list_for_each_entry_safe(stmt, next, &rule->stmts, list) {
-		enum stmt_types type = stmt->ops->type;
+		enum stmt_types type = stmt->type;
 
 		rctx.stmt = stmt;
 		dl = rule_update_dl_proto_ctx(&rctx);

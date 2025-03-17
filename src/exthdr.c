@@ -269,7 +269,7 @@ static void exthdr_stmt_destroy(struct stmt *stmt)
 	expr_free(stmt->exthdr.val);
 }
 
-static const struct stmt_ops exthdr_stmt_ops = {
+const struct stmt_ops exthdr_stmt_ops = {
 	.type		= STMT_EXTHDR,
 	.name		= "exthdr",
 	.print		= exthdr_stmt_print,

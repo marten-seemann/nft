@@ -164,10 +164,10 @@ static bool __stmt_type_eq(const struct stmt *stmt_a, const struct stmt *stmt_b,
 {
 	struct expr *expr_a, *expr_b;
 
-	if (stmt_a->ops->type != stmt_b->ops->type)
+	if (stmt_a->type != stmt_b->type)
 		return false;
 
-	switch (stmt_a->ops->type) {
+	switch (stmt_a->type) {
 	case STMT_EXPRESSION:
 		expr_a = stmt_a->expr;
 		expr_b = stmt_b->expr;
@@ -324,7 +324,7 @@ static bool stmt_verdict_eq(const struct stmt *stmt_a, const struct stmt *stmt_b
 {
 	struct expr *expr_a, *expr_b;
 
-	assert (stmt_a->ops->type == STMT_VERDICT);
+	assert (stmt_a->type == STMT_VERDICT);
 
 	expr_a = stmt_a->expr;
 	expr_b = stmt_b->expr;
@@ -345,14 +345,14 @@ static bool stmt_type_find(struct optimize_ctx *ctx, const struct stmt *stmt)
 	uint32_t i;
 
 	for (i = 0; i < ctx->num_stmts; i++) {
-		if (ctx->stmt[i]->ops->type == STMT_INVALID)
+		if (ctx->stmt[i]->type == STMT_INVALID)
 			unsupported_exists = true;
 
 		if (__stmt_type_eq(stmt, ctx->stmt[i], false))
 			return true;
 	}
 
-	switch (stmt->ops->type) {
+	switch (stmt->type) {
 	case STMT_EXPRESSION:
 	case STMT_VERDICT:
 	case STMT_COUNTER:
@@ -371,13 +371,9 @@ static bool stmt_type_find(struct optimize_ctx *ctx, const struct stmt *stmt)
 	return false;
 }
 
-static struct stmt_ops unsupported_stmt_ops = {
-	.type	= STMT_INVALID,
-	.name	= "unsupported",
-};
-
 static int rule_collect_stmts(struct optimize_ctx *ctx, struct rule *rule)
 {
+	const struct stmt_ops *ops;
 	struct stmt *stmt, *clone;
 
 	list_for_each_entry(stmt, &rule->stmts, list) {
@@ -387,16 +383,17 @@ static int rule_collect_stmts(struct optimize_ctx *ctx, struct rule *rule)
 		/* No refcounter available in statement objects, clone it to
 		 * to store in the array of selectors.
 		 */
-		clone = stmt_alloc(&internal_location, stmt->ops);
-		switch (stmt->ops->type) {
+		ops = stmt_ops(stmt);
+		clone = stmt_alloc(&internal_location, ops);
+		switch (stmt->type) {
 		case STMT_EXPRESSION:
 			if (stmt->expr->op != OP_IMPLICIT &&
 			    stmt->expr->op != OP_EQ) {
-				clone->ops = &unsupported_stmt_ops;
+				clone->type = STMT_INVALID;
 				break;
 			}
 			if (stmt->expr->left->etype == EXPR_CONCAT) {
-				clone->ops = &unsupported_stmt_ops;
+				clone->type = STMT_INVALID;
 				break;
 			}
 			/* fall-through */
@@ -418,7 +415,7 @@ static int rule_collect_stmts(struct optimize_ctx *ctx, struct rule *rule)
 			    (stmt->nat.proto &&
 			     (stmt->nat.proto->etype == EXPR_MAP ||
 			      stmt->nat.proto->etype == EXPR_VARIABLE))) {
-				clone->ops = &unsupported_stmt_ops;
+				clone->type = STMT_INVALID;
 				break;
 			}
 			clone->nat.type = stmt->nat.type;
@@ -438,7 +435,7 @@ static int rule_collect_stmts(struct optimize_ctx *ctx, struct rule *rule)
 			clone->reject.family = stmt->reject.family;
 			break;
 		default:
-			clone->ops = &unsupported_stmt_ops;
+			clone->type = STMT_INVALID;
 			break;
 		}
 
@@ -455,7 +452,7 @@ static int unsupported_in_stmt_matrix(const struct optimize_ctx *ctx)
 	uint32_t i;
 
 	for (i = 0; i < ctx->num_stmts; i++) {
-		if (ctx->stmt[i]->ops->type == STMT_INVALID)
+		if (ctx->stmt[i]->type == STMT_INVALID)
 			return i;
 	}
 	/* this should not happen. */
@@ -475,7 +472,7 @@ static int cmd_stmt_find_in_stmt_matrix(struct optimize_ctx *ctx, struct stmt *s
 }
 
 static struct stmt unsupported_stmt = {
-	.ops	= &unsupported_stmt_ops,
+	.type	= STMT_INVALID,
 };
 
 static void rule_build_stmt_matrix_stmts(struct optimize_ctx *ctx,
@@ -502,7 +499,7 @@ static int stmt_verdict_find(const struct optimize_ctx *ctx)
 	uint32_t i;
 
 	for (i = 0; i < ctx->num_stmts; i++) {
-		if (ctx->stmt[i]->ops->type != STMT_VERDICT)
+		if (ctx->stmt[i]->type != STMT_VERDICT)
 			continue;
 
 		return i;
@@ -569,7 +566,7 @@ static void merge_verdict_stmts(const struct optimize_ctx *ctx,
 
 	for (i = from + 1; i <= to; i++) {
 		stmt_b = ctx->stmt_matrix[i][merge->stmt[0]];
-		switch (stmt_b->ops->type) {
+		switch (stmt_b->type) {
 		case STMT_VERDICT:
 			switch (stmt_b->expr->etype) {
 			case EXPR_MAP:
@@ -591,7 +588,7 @@ static void merge_stmts(const struct optimize_ctx *ctx,
 {
 	struct stmt *stmt_a = ctx->stmt_matrix[from][merge->stmt[0]];
 
-	switch (stmt_a->ops->type) {
+	switch (stmt_a->type) {
 	case STMT_EXPRESSION:
 		merge_expr_stmts(ctx, from, to, merge, stmt_a);
 		break;
@@ -762,7 +759,7 @@ static void remove_counter(const struct optimize_ctx *ctx, uint32_t from)
 		if (!stmt)
 			continue;
 
-		if (stmt->ops->type == STMT_COUNTER) {
+		if (stmt->type == STMT_COUNTER) {
 			list_del(&stmt->list);
 			stmt_free(stmt);
 		}
@@ -780,7 +777,7 @@ static struct stmt *zap_counter(const struct optimize_ctx *ctx, uint32_t from)
 		if (!stmt)
 			continue;
 
-		if (stmt->ops->type == STMT_COUNTER) {
+		if (stmt->type == STMT_COUNTER) {
 			list_del(&stmt->list);
 			return stmt;
 		}
@@ -937,7 +934,7 @@ static int stmt_nat_type(const struct optimize_ctx *ctx, int from,
 		if (!ctx->stmt_matrix[from][j])
 			continue;
 
-		if (ctx->stmt_matrix[from][j]->ops->type == STMT_NAT) {
+		if (ctx->stmt_matrix[from][j]->type == STMT_NAT) {
 			*nat_type = ctx->stmt_matrix[from][j]->nat.type;
 			return 0;
 		}
@@ -955,7 +952,7 @@ static int stmt_nat_find(const struct optimize_ctx *ctx, int from)
 		return -1;
 
 	for (i = 0; i < ctx->num_stmts; i++) {
-		if (ctx->stmt[i]->ops->type != STMT_NAT ||
+		if (ctx->stmt[i]->type != STMT_NAT ||
 		    ctx->stmt[i]->nat.type != nat_type)
 			continue;
 
@@ -969,7 +966,7 @@ static struct expr *stmt_nat_expr(struct stmt *nat_stmt)
 {
 	struct expr *nat_expr;
 
-	assert(nat_stmt->ops->type == STMT_NAT);
+	assert(nat_stmt->type == STMT_NAT);
 
 	if (nat_stmt->nat.proto) {
 		if (nat_stmt->nat.addr) {
@@ -1153,7 +1150,7 @@ static uint32_t merge_stmt_type(const struct optimize_ctx *ctx,
 			stmt = ctx->stmt_matrix[i][j];
 			if (!stmt)
 				continue;
-			if (stmt->ops->type == STMT_NAT) {
+			if (stmt->type == STMT_NAT) {
 				if ((stmt->nat.type == NFT_NAT_REDIR &&
 				     !stmt->nat.proto) ||
 				    stmt->nat.type == NFT_NAT_MASQ)
@@ -1250,7 +1247,7 @@ static bool stmt_is_mergeable(const struct stmt *stmt)
 	if (!stmt)
 		return false;
 
-	switch (stmt->ops->type) {
+	switch (stmt->type) {
 	case STMT_VERDICT:
 		if (stmt->expr->etype == EXPR_MAP)
 			return true;
@@ -1346,7 +1343,7 @@ static int chain_optimize(struct nft_ctx *nft, struct list_head *rules)
 		for (m = 0; m < ctx->num_stmts; m++) {
 			if (!ctx->stmt_matrix[i][m])
 				continue;
-			switch (ctx->stmt_matrix[i][m]->ops->type) {
+			switch (ctx->stmt_matrix[i][m]->type) {
 			case STMT_EXPRESSION:
 				merge[k].stmt[merge[k].num_stmts++] = m;
 				break;

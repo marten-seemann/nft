@@ -1046,7 +1046,7 @@ static struct nftnl_expr *netlink_gen_last_stmt(const struct stmt *stmt)
 
 struct nftnl_expr *netlink_gen_stmt_stateful(const struct stmt *stmt)
 {
-	switch (stmt->ops->type) {
+	switch (stmt->type) {
 	case STMT_CONNLIMIT:
 		return netlink_gen_connlimit_stmt(stmt);
 	case STMT_COUNTER:
@@ -1058,7 +1058,7 @@ struct nftnl_expr *netlink_gen_stmt_stateful(const struct stmt *stmt)
 	case STMT_LAST:
 		return netlink_gen_last_stmt(stmt);
 	default:
-		BUG("unknown stateful statement type %s\n", stmt->ops->name);
+		BUG("unknown stateful statement type %d\n", stmt->type);
 	}
 }
 
@@ -1694,7 +1694,7 @@ static void netlink_gen_stmt(struct netlink_linearize_ctx *ctx,
 {
 	struct nftnl_expr *nle;
 
-	switch (stmt->ops->type) {
+	switch (stmt->type) {
 	case STMT_EXPRESSION:
 		return netlink_gen_expr(ctx, stmt->expr, NFT_REG_VERDICT);
 	case STMT_VERDICT:
@@ -1748,7 +1748,7 @@ static void netlink_gen_stmt(struct netlink_linearize_ctx *ctx,
 	case STMT_OPTSTRIP:
 		return netlink_gen_optstrip_stmt(ctx, stmt);
 	default:
-		BUG("unknown statement type %s\n", stmt->ops->name);
+		BUG("unknown statement type %d\n", stmt->type);
 	}
 }
 

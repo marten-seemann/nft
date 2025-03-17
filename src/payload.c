@@ -378,7 +378,7 @@ static void payload_stmt_destroy(struct stmt *stmt)
 	expr_free(stmt->payload.val);
 }
 
-static const struct stmt_ops payload_stmt_ops = {
+const struct stmt_ops payload_stmt_ops = {
 	.type		= STMT_PAYLOAD,
 	.name		= "payload",
 	.print		= payload_stmt_print,
@@ -1198,7 +1198,7 @@ bool stmt_payload_expr_trim(struct stmt *stmt, const struct proto_ctx *pctx)
 	mpz_t bitmask, tmp, tmp2;
 	unsigned long n;
 
-	assert(stmt->ops->type == STMT_PAYLOAD);
+	assert(stmt->type == STMT_PAYLOAD);
 	assert(expr->etype == EXPR_BINOP);
 
 	payload = expr->left;

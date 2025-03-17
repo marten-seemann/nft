@@ -109,19 +109,20 @@ static json_t *set_key_dtype_json(const struct set *set,
 
 static json_t *stmt_print_json(const struct stmt *stmt, struct output_ctx *octx)
 {
+	const struct stmt_ops *ops = stmt_ops(stmt);
 	char buf[1024];
 	FILE *fp;
 
-	if (stmt->ops->json)
-		return stmt->ops->json(stmt, octx);
+	if (ops->json)
+		return ops->json(stmt, octx);
 
 	fprintf(stderr, "warning: stmt ops %s have no json callback\n",
-		stmt->ops->name);
+		ops->name);
 
 	fp = octx->output_fp;
 	octx->output_fp = fmemopen(buf, 1024, "w");
 
-	stmt->ops->print(stmt, octx);
+	ops->print(stmt, octx);
 
 	fclose(octx->output_fp);
 	octx->output_fp = fp;

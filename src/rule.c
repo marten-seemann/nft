@@ -494,10 +494,12 @@ void rule_free(struct rule *rule)
 
 void rule_print(const struct rule *rule, struct output_ctx *octx)
 {
+	const struct stmt_ops *ops;
 	const struct stmt *stmt;
 
 	list_for_each_entry(stmt, &rule->stmts, list) {
-		stmt->ops->print(stmt, octx);
+		ops = stmt_ops(stmt);
+		ops->print(stmt, octx);
 		if (!list_is_last(&stmt->list, &rule->stmts))
 			nft_print(octx, " ");
 	}
@@ -2741,7 +2743,7 @@ static void stmt_reduce(const struct rule *rule)
 		}
 
 		/* Must not merge across other statements */
-		if (stmt->ops->type != STMT_EXPRESSION) {
+		if (stmt->type != STMT_EXPRESSION) {
 			if (idx >= 2)
 				payload_do_merge(sa, idx);
 			idx = 0;

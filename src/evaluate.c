@@ -74,9 +74,9 @@ static int __fmtstring(3, 4) set_error(struct eval_ctx *ctx,
 	return -1;
 }
 
-static const char *stmt_name(const struct stmt *stmt)
+const char *stmt_name(const struct stmt *stmt)
 {
-	switch (stmt->ops->type) {
+	switch (stmt->type) {
 	case STMT_NAT:
 		switch (stmt->nat.type) {
 		case NFT_NAT_SNAT:
@@ -93,7 +93,7 @@ static const char *stmt_name(const struct stmt *stmt)
 		break;
 	}
 
-	return stmt->ops->name;
+	return stmt_ops(stmt)->name;
 }
 
 static int stmt_error_range(struct eval_ctx *ctx, const struct stmt *stmt, const struct expr *e)
@@ -573,7 +573,7 @@ static int expr_evaluate_bits(struct eval_ctx *ctx, struct expr **exprp)
 	 * require the transformations that are needed for payload matching,
 	 * skip this.
 	 */
-	if (ctx->stmt && ctx->stmt->ops->type == STMT_PAYLOAD)
+	if (ctx->stmt && ctx->stmt->type == STMT_PAYLOAD)
 		return 0;
 
 	switch (expr->etype) {
@@ -790,7 +790,7 @@ static int stmt_dep_conflict(struct eval_ctx *ctx, const struct stmt *nstmt)
 		if (stmt == nstmt)
 			break;
 
-		if (stmt->ops->type != STMT_EXPRESSION ||
+		if (stmt->type != STMT_EXPRESSION ||
 		    stmt->expr->etype != EXPR_RELATIONAL ||
 		    stmt->expr->right->etype != EXPR_VALUE ||
 		    stmt->expr->left->etype != EXPR_PAYLOAD ||
@@ -1841,13 +1841,13 @@ static int __expr_evaluate_set_elem(struct eval_ctx *ctx, struct expr *elem)
 		set_stmt = list_first_entry(&set->stmt_list, struct stmt, list);
 
 		list_for_each_entry(elem_stmt, &elem->stmt_list, list) {
-			if (set_stmt->ops != elem_stmt->ops) {
+			if (set_stmt->type != elem_stmt->type) {
 				return stmt_error(ctx, elem_stmt,
 						  "statement mismatch, element expects %s, "
 						  "but %s has type %s",
-						  elem_stmt->ops->name,
+						  stmt_name(elem_stmt),
 						  set_is_map(set->flags) ? "map" : "set",
-						  set_stmt->ops->name);
+						  stmt_name(set_stmt));
 			}
 			set_stmt = list_next_entry(set_stmt, list);
 		}
@@ -4126,7 +4126,7 @@ static int stmt_evaluate_l3proto(struct eval_ctx *ctx,
 					 "conflicting protocols specified: %s vs. %s. You must specify ip or ip6 family in %s statement",
 					 pctx->protocol[PROTO_BASE_NETWORK_HDR].desc->name,
 					 family2str(family),
-					 stmt->ops->name);
+					 stmt_name(stmt));
 	return 0;
 }
 
@@ -4854,7 +4854,7 @@ int stmt_evaluate(struct eval_ctx *ctx, struct stmt *stmt)
 	if (ctx->nft->debug_mask & NFT_DEBUG_EVALUATION) {
 		struct error_record *erec;
 		erec = erec_create(EREC_INFORMATIONAL, &stmt->location,
-				   "Evaluate %s", stmt->ops->name);
+				   "Evaluate %s", stmt_name(stmt));
 		erec_print(&ctx->nft->output, erec, ctx->nft->debug_mask);
 		stmt_print(stmt, &ctx->nft->output);
 		nft_print(&ctx->nft->output, "\n\n");
@@ -4863,7 +4863,7 @@ int stmt_evaluate(struct eval_ctx *ctx, struct stmt *stmt)
 
 	ctx->stmt_len = 0;
 
-	switch (stmt->ops->type) {
+	switch (stmt->type) {
 	case STMT_CONNLIMIT:
 	case STMT_COUNTER:
 	case STMT_LAST:
@@ -4913,7 +4913,7 @@ int stmt_evaluate(struct eval_ctx *ctx, struct stmt *stmt)
 	case STMT_OPTSTRIP:
 		return stmt_evaluate_optstrip(ctx, stmt);
 	default:
-		BUG("unknown statement type %s\n", stmt->ops->name);
+		BUG("unknown statement type %d\n", stmt->type);
 	}
 }
 

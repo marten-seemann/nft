@@ -3306,12 +3306,12 @@ counter_args		:	counter_arg
 
 counter_arg		:	PACKETS			NUM
 			{
-				assert($<stmt>0->ops->type == STMT_COUNTER);
+				assert($<stmt>0->type == STMT_COUNTER);
 				$<stmt>0->counter.packets = $2;
 			}
 			|	BYTES			NUM
 			{
-				assert($<stmt>0->ops->type == STMT_COUNTER);
+				assert($<stmt>0->type == STMT_COUNTER);
 				$<stmt>0->counter.bytes	 = $2;
 			}
 			;
