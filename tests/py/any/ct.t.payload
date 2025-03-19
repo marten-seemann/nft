@@ -511,7 +511,7 @@ ip test-ip4 output
 
 # ct id 12345
 ip test-ip4 output
-  [ ct load unknown => reg 1 ]
+  [ ct load id => reg 1 ]
   [ cmp eq reg 1 0x39300000 ]
 
 # ct status ! dnat
