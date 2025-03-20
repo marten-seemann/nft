@@ -769,8 +769,8 @@ int nft_lex(void *, void *, void *);
 %destructor { stmt_free($$); }	stmt match_stmt verdict_stmt set_elem_stmt
 %type <stmt>			counter_stmt counter_stmt_alloc stateful_stmt last_stmt
 %destructor { stmt_free($$); }	counter_stmt counter_stmt_alloc stateful_stmt last_stmt
-%type <stmt>			limit_stmt_alloc quota_stmt_alloc
-%destructor { stmt_free($$); }	limit_stmt_alloc quota_stmt_alloc
+%type <stmt>			limit_stmt_alloc quota_stmt_alloc last_stmt_alloc
+%destructor { stmt_free($$); }	limit_stmt_alloc quota_stmt_alloc last_stmt_alloc
 %type <stmt>			objref_stmt objref_stmt_counter objref_stmt_limit objref_stmt_quota objref_stmt_ct objref_stmt_synproxy
 %destructor { stmt_free($$); }	objref_stmt objref_stmt_counter objref_stmt_limit objref_stmt_quota objref_stmt_ct objref_stmt_synproxy
 
@@ -3324,19 +3324,25 @@ counter_arg		:	PACKETS			NUM
 			}
 			;
 
-last_stmt		:	LAST
+last_stmt_alloc		:	LAST
 			{
 				$$ = last_stmt_alloc(&@$);
 			}
-			|	LAST USED	NEVER
+			;
+
+last_stmt		:	last_stmt_alloc
+			|	last_stmt_alloc 	last_args
+			;
+
+last_args		:	USED NEVER
+			|	USED time_spec
 			{
-				$$ = last_stmt_alloc(&@$);
-			}
-			|	LAST USED	time_spec
-			{
-				$$ = last_stmt_alloc(&@$);
-				$$->last.used = $3;
-				$$->last.set = true;
+				struct last_stmt *last;
+
+				assert($<stmt>0->type == STMT_LAST);
+				last = &$<stmt>0->last;
+				last->used = $2;
+				last->set = true;
 			}
 			;
 
@@ -4641,16 +4647,7 @@ set_elem_stmt		:	counter_stmt	close_scope_counter
 				$$->connlimit.flags = NFT_CONNLIMIT_F_INV;
 			}
 			|	quota_stmt	close_scope_quota
-			|	LAST USED	NEVER	close_scope_last
-			{
-				$$ = last_stmt_alloc(&@$);
-			}
-			|	LAST USED	time_spec	close_scope_last
-			{
-				$$ = last_stmt_alloc(&@$);
-				$$->last.used = $3;
-				$$->last.set = true;
-			}
+			|	last_stmt	close_scope_last
 			;
 
 set_elem_expr_option	:	TIMEOUT		set_elem_time_spec
