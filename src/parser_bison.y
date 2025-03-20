@@ -769,6 +769,8 @@ int nft_lex(void *, void *, void *);
 %destructor { stmt_free($$); }	stmt match_stmt verdict_stmt set_elem_stmt
 %type <stmt>			counter_stmt counter_stmt_alloc stateful_stmt last_stmt
 %destructor { stmt_free($$); }	counter_stmt counter_stmt_alloc stateful_stmt last_stmt
+%type <stmt>			limit_stmt_alloc
+%destructor { stmt_free($$); }	limit_stmt_alloc
 %type <stmt>			objref_stmt objref_stmt_counter objref_stmt_limit objref_stmt_quota objref_stmt_ct objref_stmt_synproxy
 %destructor { stmt_free($$); }	objref_stmt objref_stmt_counter objref_stmt_limit objref_stmt_quota objref_stmt_ct objref_stmt_synproxy
 
@@ -3183,7 +3185,7 @@ objref_stmt		:	objref_stmt_counter
 			;
 
 stateful_stmt		:	counter_stmt	close_scope_counter
-			|	limit_stmt
+			|	limit_stmt	close_scope_limit
 			|	quota_stmt
 			|	connlimit_stmt
 			|	last_stmt	close_scope_last
@@ -3467,28 +3469,45 @@ log_flag_tcp		:	SEQUENCE
 			}
 			;
 
-limit_stmt		:	LIMIT	RATE	limit_mode	limit_rate_pkts	limit_burst_pkts	close_scope_limit
+limit_stmt_alloc	:	LIMIT	RATE
+			{
+				$$ = limit_stmt_alloc(&@$);
+			}
+			;
+
+limit_stmt		:	limit_stmt_alloc limit_args
+			;
+
+limit_args		:	limit_mode	limit_rate_pkts	limit_burst_pkts
 	    		{
-				if ($5 == 0) {
-					erec_queue(error(&@5, "packet limit burst must be > 0"),
+				struct limit_stmt *limit;
+
+				assert($<stmt>0->type == STMT_LIMIT);
+
+				if ($3 == 0) {
+					erec_queue(error(&@3, "packet limit burst must be > 0"),
 						   state->msgs);
 					YYERROR;
 				}
-				$$ = limit_stmt_alloc(&@$);
-				$$->limit.rate	= $4.rate;
-				$$->limit.unit	= $4.unit;
-				$$->limit.burst	= $5;
-				$$->limit.type	= NFT_LIMIT_PKTS;
-				$$->limit.flags = $3;
+				limit = &$<stmt>0->limit;
+				limit->rate = $2.rate;
+				limit->unit = $2.unit;
+				limit->burst = $3;
+				limit->type = NFT_LIMIT_PKTS;
+				limit->flags = $1;
 			}
-			|	LIMIT	RATE	limit_mode	limit_rate_bytes	limit_burst_bytes	close_scope_limit
+			|	limit_mode	limit_rate_bytes	limit_burst_bytes
 			{
-				$$ = limit_stmt_alloc(&@$);
-				$$->limit.rate	= $4.rate;
-				$$->limit.unit	= $4.unit;
-				$$->limit.burst	= $5;
-				$$->limit.type	= NFT_LIMIT_PKT_BYTES;
-				$$->limit.flags = $3;
+				struct limit_stmt *limit;
+
+				assert($<stmt>0->type == STMT_LIMIT);
+
+				limit = &$<stmt>0->limit;
+				limit->rate = $2.rate;
+				limit->unit = $2.unit;
+				limit->burst = $3;
+				limit->type = NFT_LIMIT_PKT_BYTES;
+				limit->flags = $1;
 			}
 			;
 
@@ -4597,29 +4616,7 @@ set_elem_stmt_list	:	set_elem_stmt
 			;
 
 set_elem_stmt		:	counter_stmt	close_scope_counter
-			|	LIMIT   RATE    limit_mode      limit_rate_pkts       limit_burst_pkts	close_scope_limit
-			{
-				if ($5 == 0) {
-					erec_queue(error(&@5, "limit burst must be > 0"),
-						   state->msgs);
-					YYERROR;
-				}
-				$$ = limit_stmt_alloc(&@$);
-				$$->limit.rate  = $4.rate;
-				$$->limit.unit  = $4.unit;
-				$$->limit.burst = $5;
-				$$->limit.type  = NFT_LIMIT_PKTS;
-				$$->limit.flags = $3;
-			}
-			|       LIMIT   RATE    limit_mode      limit_rate_bytes  limit_burst_bytes	close_scope_limit
-			{
-				$$ = limit_stmt_alloc(&@$);
-				$$->limit.rate  = $4.rate;
-				$$->limit.unit  = $4.unit;
-				$$->limit.burst = $5;
-				$$->limit.type  = NFT_LIMIT_PKT_BYTES;
-				$$->limit.flags = $3;
-			}
+			|	limit_stmt	close_scope_limit
 			|	CT	COUNT	NUM	close_scope_ct
 			{
 				$$ = connlimit_stmt_alloc(&@$);
