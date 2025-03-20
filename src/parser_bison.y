@@ -4596,16 +4596,7 @@ set_elem_stmt_list	:	set_elem_stmt
 			}
 			;
 
-set_elem_stmt		:	COUNTER	close_scope_counter
-			{
-				$$ = counter_stmt_alloc(&@$);
-			}
-			|	COUNTER	PACKETS	NUM	BYTES	NUM	close_scope_counter
-			{
-				$$ = counter_stmt_alloc(&@$);
-				$$->counter.packets = $3;
-				$$->counter.bytes = $5;
-			}
+set_elem_stmt		:	counter_stmt	close_scope_counter
 			|	LIMIT   RATE    limit_mode      limit_rate_pkts       limit_burst_pkts	close_scope_limit
 			{
 				if ($5 == 0) {
