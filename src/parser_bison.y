@@ -769,8 +769,8 @@ int nft_lex(void *, void *, void *);
 %destructor { stmt_free($$); }	stmt match_stmt verdict_stmt set_elem_stmt
 %type <stmt>			counter_stmt counter_stmt_alloc stateful_stmt last_stmt
 %destructor { stmt_free($$); }	counter_stmt counter_stmt_alloc stateful_stmt last_stmt
-%type <stmt>			limit_stmt_alloc quota_stmt_alloc last_stmt_alloc
-%destructor { stmt_free($$); }	limit_stmt_alloc quota_stmt_alloc last_stmt_alloc
+%type <stmt>			limit_stmt_alloc quota_stmt_alloc last_stmt_alloc ct_limit_stmt_alloc
+%destructor { stmt_free($$); }	limit_stmt_alloc quota_stmt_alloc last_stmt_alloc ct_limit_stmt_alloc
 %type <stmt>			objref_stmt objref_stmt_counter objref_stmt_limit objref_stmt_quota objref_stmt_ct objref_stmt_synproxy
 %destructor { stmt_free($$); }	objref_stmt objref_stmt_counter objref_stmt_limit objref_stmt_quota objref_stmt_ct objref_stmt_synproxy
 
@@ -3187,7 +3187,7 @@ objref_stmt		:	objref_stmt_counter
 stateful_stmt		:	counter_stmt	close_scope_counter
 			|	limit_stmt	close_scope_limit
 			|	quota_stmt	close_scope_quota
-			|	connlimit_stmt
+			|	connlimit_stmt	close_scope_ct
 			|	last_stmt	close_scope_last
 			;
 
@@ -3283,16 +3283,27 @@ verdict_map_list_member_expr:	opt_newline	set_elem_expr	COLON	verdict_expr	opt_n
 			}
 			;
 
-connlimit_stmt		:	CT	COUNT	NUM	close_scope_ct
+ct_limit_stmt_alloc	:	CT	COUNT
 			{
 				$$ = connlimit_stmt_alloc(&@$);
-				$$->connlimit.count	= $3;
 			}
-			|	CT	COUNT	OVER	NUM	close_scope_ct
+			;
+
+connlimit_stmt		:	ct_limit_stmt_alloc	ct_limit_args
+			;
+
+ct_limit_args		:	NUM
 			{
-				$$ = connlimit_stmt_alloc(&@$);
-				$$->connlimit.count = $4;
-				$$->connlimit.flags = NFT_CONNLIMIT_F_INV;
+				assert($<stmt>0->type == STMT_CONNLIMIT);
+
+				$<stmt>0->connlimit.count	= $1;
+			}
+			|	OVER	NUM
+			{
+				assert($<stmt>0->type == STMT_CONNLIMIT);
+
+				$<stmt>0->connlimit.count = $2;
+				$<stmt>0->connlimit.flags = NFT_CONNLIMIT_F_INV;
 			}
 			;
 
@@ -4635,17 +4646,7 @@ set_elem_stmt_list	:	set_elem_stmt
 
 set_elem_stmt		:	counter_stmt	close_scope_counter
 			|	limit_stmt	close_scope_limit
-			|	CT	COUNT	NUM	close_scope_ct
-			{
-				$$ = connlimit_stmt_alloc(&@$);
-				$$->connlimit.count	= $3;
-			}
-			|	CT	COUNT	OVER	NUM	close_scope_ct
-			{
-				$$ = connlimit_stmt_alloc(&@$);
-				$$->connlimit.count = $4;
-				$$->connlimit.flags = NFT_CONNLIMIT_F_INV;
-			}
+			|	connlimit_stmt	close_scope_ct
 			|	quota_stmt	close_scope_quota
 			|	last_stmt	close_scope_last
 			;
