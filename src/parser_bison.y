@@ -769,8 +769,8 @@ int nft_lex(void *, void *, void *);
 %destructor { stmt_free($$); }	stmt match_stmt verdict_stmt set_elem_stmt
 %type <stmt>			counter_stmt counter_stmt_alloc stateful_stmt last_stmt
 %destructor { stmt_free($$); }	counter_stmt counter_stmt_alloc stateful_stmt last_stmt
-%type <stmt>			limit_stmt_alloc
-%destructor { stmt_free($$); }	limit_stmt_alloc
+%type <stmt>			limit_stmt_alloc quota_stmt_alloc
+%destructor { stmt_free($$); }	limit_stmt_alloc quota_stmt_alloc
 %type <stmt>			objref_stmt objref_stmt_counter objref_stmt_limit objref_stmt_quota objref_stmt_ct objref_stmt_synproxy
 %destructor { stmt_free($$); }	objref_stmt objref_stmt_counter objref_stmt_limit objref_stmt_quota objref_stmt_ct objref_stmt_synproxy
 
@@ -3186,7 +3186,7 @@ objref_stmt		:	objref_stmt_counter
 
 stateful_stmt		:	counter_stmt	close_scope_counter
 			|	limit_stmt	close_scope_limit
-			|	quota_stmt
+			|	quota_stmt	close_scope_quota
 			|	connlimit_stmt
 			|	last_stmt	close_scope_last
 			;
@@ -3536,21 +3536,33 @@ quota_used		:	/* empty */	{ $$ = 0; }
 			}
 			;
 
-quota_stmt		:	QUOTA	quota_mode NUM quota_unit quota_used	close_scope_quota
+quota_stmt_alloc	:	QUOTA
+			{
+				$$ = quota_stmt_alloc(&@$);
+			}
+			;
+
+quota_stmt		:	quota_stmt_alloc quota_args
+			;
+
+quota_args		:	quota_mode NUM quota_unit quota_used
 			{
 				struct error_record *erec;
+				struct quota_stmt *quota;
 				uint64_t rate;
 
-				erec = data_unit_parse(&@$, $4, &rate);
-				free_const($4);
+				assert($<stmt>0->type == STMT_QUOTA);
+
+				erec = data_unit_parse(&@$, $3, &rate);
+				free_const($3);
 				if (erec != NULL) {
 					erec_queue(erec, state->msgs);
 					YYERROR;
 				}
-				$$ = quota_stmt_alloc(&@$);
-				$$->quota.bytes	= $3 * rate;
-				$$->quota.used = $5;
-				$$->quota.flags	= $2;
+				quota = &$<stmt>0->quota;
+				quota->bytes = $2 * rate;
+				quota->used = $4;
+				quota->flags = $1;
 			}
 			;
 
@@ -4628,22 +4640,7 @@ set_elem_stmt		:	counter_stmt	close_scope_counter
 				$$->connlimit.count = $4;
 				$$->connlimit.flags = NFT_CONNLIMIT_F_INV;
 			}
-			|	QUOTA	quota_mode NUM quota_unit quota_used	close_scope_quota
-			{
-				struct error_record *erec;
-				uint64_t rate;
-
-				erec = data_unit_parse(&@$, $4, &rate);
-				free_const($4);
-				if (erec != NULL) {
-					erec_queue(erec, state->msgs);
-					YYERROR;
-				}
-				$$ = quota_stmt_alloc(&@$);
-				$$->quota.bytes	= $3 * rate;
-				$$->quota.used = $5;
-				$$->quota.flags	= $2;
-			}
+			|	quota_stmt	close_scope_quota
 			|	LAST USED	NEVER	close_scope_last
 			{
 				$$ = last_stmt_alloc(&@$);
