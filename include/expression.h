@@ -84,9 +84,9 @@ enum expr_types {
 	EXPR_FLAGCMP,
 	EXPR_RANGE_VALUE,
 	EXPR_RANGE_SYMBOL,
-
-	EXPR_MAX = EXPR_FLAGCMP
+	__EXPR_MAX
 };
+#define EXPR_MAX	(__EXPR_MAX - 1)
 
 enum ops {
 	OP_INVALID,

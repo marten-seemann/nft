@@ -1794,6 +1794,7 @@ static const struct expr_ops *__expr_ops_by_type(enum expr_types etype)
 	case EXPR_FLAGCMP: return &flagcmp_expr_ops;
 	case EXPR_RANGE_VALUE: return &constant_range_expr_ops;
 	case EXPR_RANGE_SYMBOL: return &symbol_range_expr_ops;
+	case __EXPR_MAX: break;
 	}
 
 	return NULL;
