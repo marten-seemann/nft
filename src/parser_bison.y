@@ -4917,19 +4917,33 @@ relational_expr		:	expr	/* implicit */	rhs_expr
 			}
 			|	expr	/* implicit */	basic_rhs_expr	SLASH	list_rhs_expr
 			{
-				$$ = flagcmp_expr_alloc(&@$, OP_EQ, $1, $4, $2);
+				struct expr *mask = list_expr_to_binop($4);
+				struct expr *binop = binop_expr_alloc(&@$, OP_AND, $1, mask);
+
+				$$ = relational_expr_alloc(&@$, OP_IMPLICIT, binop, $2);
 			}
 			|	expr	/* implicit */	list_rhs_expr	SLASH	list_rhs_expr
 			{
-				$$ = flagcmp_expr_alloc(&@$, OP_EQ, $1, $4, $2);
+				struct expr *value = list_expr_to_binop($2);
+				struct expr *mask = list_expr_to_binop($4);
+				struct expr *binop = binop_expr_alloc(&@$, OP_AND, $1, mask);
+
+				$$ = relational_expr_alloc(&@$, OP_IMPLICIT, binop, value);
 			}
 			|	expr	relational_op	basic_rhs_expr	SLASH	list_rhs_expr
 			{
-				$$ = flagcmp_expr_alloc(&@$, $2, $1, $5, $3);
+				struct expr *mask = list_expr_to_binop($5);
+				struct expr *binop = binop_expr_alloc(&@$, OP_AND, $1, mask);
+
+				$$ = relational_expr_alloc(&@$, $2, binop, $3);
 			}
 			|	expr	relational_op	list_rhs_expr	SLASH	list_rhs_expr
 			{
-				$$ = flagcmp_expr_alloc(&@$, $2, $1, $5, $3);
+				struct expr *value = list_expr_to_binop($3);
+				struct expr *mask = list_expr_to_binop($5);
+				struct expr *binop = binop_expr_alloc(&@$, OP_AND, $1, mask);
+
+				$$ = relational_expr_alloc(&@$, $2, binop, value);
 			}
 			|	expr	relational_op	rhs_expr
 			{

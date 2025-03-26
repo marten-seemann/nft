@@ -1263,6 +1263,29 @@ struct expr *list_expr_alloc(const struct location *loc)
 	return compound_expr_alloc(loc, EXPR_LIST);
 }
 
+/* list is assumed to have two items at least, otherwise extend this! */
+struct expr *list_expr_to_binop(struct expr *expr)
+{
+	struct expr *first, *last, *i;
+
+	first = list_first_entry(&expr->expressions, struct expr, list);
+	i = first;
+
+	list_for_each_entry_continue(i, &expr->expressions, list) {
+		if (first) {
+			last = binop_expr_alloc(&expr->location, OP_OR, first, i);
+			first = NULL;
+		} else {
+			last = binop_expr_alloc(&expr->location, OP_OR, i, last);
+		}
+	}
+	/* zap list expressions, they have been moved to binop expression. */
+	init_list_head(&expr->expressions);
+	expr_free(expr);
+
+	return last;
+}
+
 static const char *calculate_delim(const struct expr *expr, int *count,
 				   struct output_ctx *octx)
 {
