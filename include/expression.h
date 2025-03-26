@@ -47,7 +47,6 @@
  * @EXPR_FIB		forward information base expression
  * @EXPR_XFRM		XFRM (ipsec) expression
  * @EXPR_SET_ELEM_CATCHALL catchall element expression
- * @EXPR_FLAGCMP	flagcmp expression
  * @EXPR_RANGE_VALUE	constant range expression
  * @EXPR_RANGE_SYMBOL	unparse symbol range expression
  */
@@ -81,7 +80,6 @@ enum expr_types {
 	EXPR_FIB,
 	EXPR_XFRM,
 	EXPR_SET_ELEM_CATCHALL,
-	EXPR_FLAGCMP,
 	EXPR_RANGE_VALUE,
 	EXPR_RANGE_SYMBOL,
 	__EXPR_MAX
@@ -402,12 +400,6 @@ struct expr {
 			uint8_t			ttl;
 			uint32_t		flags;
 		} osf;
-		struct {
-			/* EXPR_FLAGCMP */
-			struct expr		*expr;
-			struct expr		*mask;
-			struct expr		*value;
-		} flagcmp;
 	};
 };
 
@@ -543,10 +535,6 @@ extern struct expr *set_elem_expr_alloc(const struct location *loc,
 					struct expr *key);
 
 struct expr *set_elem_catchall_expr_alloc(const struct location *loc);
-
-struct expr *flagcmp_expr_alloc(const struct location *loc, enum ops op,
-				struct expr *expr, struct expr *mask,
-				struct expr *value);
 
 extern void range_expr_value_low(mpz_t rop, const struct expr *expr);
 extern void range_expr_value_high(mpz_t rop, const struct expr *expr);
