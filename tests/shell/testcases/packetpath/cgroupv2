@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# NFT_TEST_REQUIRES(NFT_TEST_HAVE_socat)
+
 doit="$1"
 rc=0
 
@@ -10,11 +12,6 @@ rc=0
 # test1b/nft-test2a will remain empty and
 # should never match, it only exists so we
 # can create cgroupv2 match rules.
-
-if ! socat -h > /dev/null ; then
-	echo "socat tool is missing"
-	exit 77
-fi
 
 if [ ! -r /sys/fs/cgroup/cgroup.procs ] ;then
 	echo "cgroup filesystem not available"
