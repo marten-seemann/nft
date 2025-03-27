@@ -2445,10 +2445,18 @@ static int do_command_list(struct netlink_ctx *ctx, struct cmd *cmd)
 		return do_list_flowtables(ctx, cmd);
 	case CMD_OBJ_HOOKS:
 		return do_list_hooks(ctx, cmd);
-	default:
-		BUG("invalid command object type %u\n", cmd->obj);
+	case CMD_OBJ_MONITOR:
+	case CMD_OBJ_MARKUP:
+	case CMD_OBJ_SETELEMS:
+	case CMD_OBJ_EXPR:
+	case CMD_OBJ_ELEMENTS:
+		errno = EOPNOTSUPP;
+		return -1;
+	case CMD_OBJ_INVALID:
+		break;
 	}
 
+	BUG("invalid command object type %u\n", cmd->obj);
 	return 0;
 }
 
