@@ -1282,7 +1282,7 @@ struct expr *list_expr_to_binop(struct expr *expr)
 		}
 	}
 	/* list with one single item only, this should not happen. */
-	assert(first);
+	assert(!first);
 
 	/* zap list expressions, they have been moved to binop expression. */
 	init_list_head(&expr->expressions);
