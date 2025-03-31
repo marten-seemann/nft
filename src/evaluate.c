@@ -3632,8 +3632,7 @@ static int reject_payload_gen_dependency_family(struct eval_ctx *ctx,
 	return 1;
 }
 
-static int stmt_reject_gen_dependency(struct eval_ctx *ctx, struct stmt *stmt,
-				      struct expr *expr)
+static int stmt_reject_gen_dependency(struct eval_ctx *ctx, struct stmt *stmt)
 {
 	struct expr *payload = NULL;
 	struct stmt *nstmt;
@@ -3713,8 +3712,7 @@ static int stmt_evaluate_reject_inet_family(struct eval_ctx *ctx,
 	return 0;
 }
 
-static int stmt_evaluate_reject_inet(struct eval_ctx *ctx, struct stmt *stmt,
-				     struct expr *expr)
+static int stmt_evaluate_reject_inet(struct eval_ctx *ctx, struct stmt *stmt)
 {
 	struct proto_ctx *pctx = eval_proto_ctx(ctx);
 	const struct proto_desc *desc;
@@ -3725,7 +3723,7 @@ static int stmt_evaluate_reject_inet(struct eval_ctx *ctx, struct stmt *stmt,
 		return -1;
 	if (stmt->reject.type == NFT_REJECT_ICMPX_UNREACH)
 		return 0;
-	if (stmt_reject_gen_dependency(ctx, stmt, expr) < 0)
+	if (stmt_reject_gen_dependency(ctx, stmt) < 0)
 		return -1;
 	return 0;
 }
@@ -3780,8 +3778,7 @@ static int stmt_evaluate_reject_bridge_family(struct eval_ctx *ctx,
 	return 0;
 }
 
-static int stmt_evaluate_reject_bridge(struct eval_ctx *ctx, struct stmt *stmt,
-				       struct expr *expr)
+static int stmt_evaluate_reject_bridge(struct eval_ctx *ctx, struct stmt *stmt)
 {
 	struct proto_ctx *pctx = eval_proto_ctx(ctx);
 	const struct proto_desc *desc;
@@ -3797,13 +3794,12 @@ static int stmt_evaluate_reject_bridge(struct eval_ctx *ctx, struct stmt *stmt,
 		return -1;
 	if (stmt->reject.type == NFT_REJECT_ICMPX_UNREACH)
 		return 0;
-	if (stmt_reject_gen_dependency(ctx, stmt, expr) < 0)
+	if (stmt_reject_gen_dependency(ctx, stmt) < 0)
 		return -1;
 	return 0;
 }
 
-static int stmt_evaluate_reject_family(struct eval_ctx *ctx, struct stmt *stmt,
-				       struct expr *expr)
+static int stmt_evaluate_reject_family(struct eval_ctx *ctx, struct stmt *stmt)
 {
 	struct proto_ctx *pctx = eval_proto_ctx(ctx);
 
@@ -3814,7 +3810,7 @@ static int stmt_evaluate_reject_family(struct eval_ctx *ctx, struct stmt *stmt,
 	case NFPROTO_IPV6:
 		switch (stmt->reject.type) {
 		case NFT_REJECT_TCP_RST:
-			if (stmt_reject_gen_dependency(ctx, stmt, expr) < 0)
+			if (stmt_reject_gen_dependency(ctx, stmt) < 0)
 				return -1;
 			break;
 		case NFT_REJECT_ICMPX_UNREACH:
@@ -3829,11 +3825,11 @@ static int stmt_evaluate_reject_family(struct eval_ctx *ctx, struct stmt *stmt,
 		break;
 	case NFPROTO_BRIDGE:
 	case NFPROTO_NETDEV:
-		if (stmt_evaluate_reject_bridge(ctx, stmt, expr) < 0)
+		if (stmt_evaluate_reject_bridge(ctx, stmt) < 0)
 			return -1;
 		break;
 	case NFPROTO_INET:
-		if (stmt_evaluate_reject_inet(ctx, stmt, expr) < 0)
+		if (stmt_evaluate_reject_inet(ctx, stmt) < 0)
 			return -1;
 		break;
 	}
@@ -3966,8 +3962,6 @@ static int stmt_evaluate_reset(struct eval_ctx *ctx, struct stmt *stmt)
 
 static int stmt_evaluate_reject(struct eval_ctx *ctx, struct stmt *stmt)
 {
-	struct expr *expr = ctx->cmd->expr;
-
 	if (stmt->reject.icmp_code < 0) {
 		if (stmt_evaluate_reject_default(ctx, stmt) < 0)
 			return -1;
@@ -3979,7 +3973,7 @@ static int stmt_evaluate_reject(struct eval_ctx *ctx, struct stmt *stmt)
 			return -1;
 	}
 
-	return stmt_evaluate_reject_family(ctx, stmt, expr);
+	return stmt_evaluate_reject_family(ctx, stmt);
 }
 
 static int nat_evaluate_family(struct eval_ctx *ctx, struct stmt *stmt)
