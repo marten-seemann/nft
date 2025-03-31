@@ -1266,7 +1266,9 @@ struct expr *list_expr_alloc(const struct location *loc)
 /* list is assumed to have two items at least, otherwise extend this! */
 struct expr *list_expr_to_binop(struct expr *expr)
 {
-	struct expr *first, *last, *i;
+	struct expr *first, *last = NULL, *i;
+
+	assert(!list_empty(&expr->expressions));
 
 	first = list_first_entry(&expr->expressions, struct expr, list);
 	i = first;
@@ -1279,6 +1281,9 @@ struct expr *list_expr_to_binop(struct expr *expr)
 			last = binop_expr_alloc(&expr->location, OP_OR, i, last);
 		}
 	}
+	/* list with one single item only, this should not happen. */
+	assert(first);
+
 	/* zap list expressions, they have been moved to binop expression. */
 	init_list_head(&expr->expressions);
 	expr_free(expr);
