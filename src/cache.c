@@ -902,6 +902,7 @@ static struct nftnl_obj_list *obj_cache_dump(struct netlink_ctx *ctx,
 	int family = NFPROTO_UNSPEC;
 	const char *table = NULL;
 	const char *obj = NULL;
+	bool reset = false;
 	bool dump = true;
 
 	if (filter) {
@@ -914,9 +915,10 @@ static struct nftnl_obj_list *obj_cache_dump(struct netlink_ctx *ctx,
 		}
 		if (filter->list.obj_type)
 			type = filter->list.obj_type;
+
+		reset = filter->reset.obj;
 	}
-	obj_list = mnl_nft_obj_dump(ctx, family, table, obj, type, dump,
-				    filter->reset.obj);
+	obj_list = mnl_nft_obj_dump(ctx, family, table, obj, type, dump, reset);
 	if (!obj_list) {
                 if (errno == EINTR)
 			return NULL;
