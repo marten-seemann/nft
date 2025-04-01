@@ -714,6 +714,7 @@ static int rule_cache_dump(struct netlink_ctx *ctx, const struct handle *h,
 	const char *chain = NULL;
 	uint64_t rule_handle = 0;
 	int family = h->family;
+	bool reset = false;
 	bool dump = true;
 
 	if (filter) {
@@ -727,11 +728,12 @@ static int rule_cache_dump(struct netlink_ctx *ctx, const struct handle *h,
 		}
 		if (filter->list.family)
 			family = filter->list.family;
+
+		reset = filter->reset.rule;
 	}
 
 	rule_cache = mnl_nft_rule_dump(ctx, family,
-				       table, chain, rule_handle, dump,
-				       filter->reset.rule);
+				       table, chain, rule_handle, dump, reset);
 	if (rule_cache == NULL) {
 		if (errno == EINTR)
 			return -1;
