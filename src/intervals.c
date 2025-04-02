@@ -783,7 +783,9 @@ int setelem_to_interval(const struct set *set, struct expr *elem,
 			next_key = NULL;
 	}
 
-	assert(key->etype == EXPR_RANGE_VALUE);
+	if (key->etype != EXPR_RANGE_VALUE)
+		BUG("key must be RANGE_VALUE, not %s\n", expr_name(key));
+
 	assert(!next_key || next_key->etype == EXPR_RANGE_VALUE);
 
 	/* skip end element for adjacents intervals in anonymous sets. */
