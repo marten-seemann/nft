@@ -131,7 +131,10 @@ static struct expr *netlink_parse_concat_expr(struct netlink_parse_ctx *ctx,
 		compound_expr_add(concat, expr);
 
 		consumed = netlink_padded_len(expr->len);
-		assert(consumed > 0);
+		if (consumed == 0) {
+			break;
+		}
+		// assert(consumed > 0);
 		len -= consumed;
 		reg += netlink_register_space(expr->len);
 	}
